@@ -11,7 +11,7 @@ canvas.clientWidth / canvas.clientHeight,
 100
 )
 
-camera.position.set(0,0,5) // más lejos para menos zoom
+camera.position.set(0,0,5)
 
 
 
@@ -70,7 +70,7 @@ function(gltf){
 
 model = gltf.scene
 
-model.scale.set(0.8,0.8,0.8) // más pequeño
+model.scale.set(0.9,0.9,0.9)
 
 scene.add(model)
 
