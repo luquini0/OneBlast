@@ -264,8 +264,6 @@ left:-5%;
 width:110%;
 height:110%;
 
-background-image:url("images/productbackground.jpg");
-
 background-size:cover;
 background-position:center;
 
@@ -276,3 +274,4 @@ transition:transform 0.1s linear;
 will-change:transform;
 
 }
+
