@@ -22,25 +22,50 @@ antialias:true
 })
 
 renderer.setSize(canvas.clientWidth,canvas.clientHeight)
-
 renderer.setPixelRatio(Math.min(window.devicePixelRatio,2))
 
 renderer.outputEncoding = THREE.sRGBEncoding
+
+/* NUEVO — iluminación física */
+
+renderer.physicallyCorrectLights = true
+renderer.toneMapping = THREE.ACESFilmicToneMapping
+renderer.toneMappingExposure = 1.6
+
+
+
+/* HDR ENVIRONMENT LIGHTING */
+
+const pmremGenerator = new THREE.PMREMGenerator(renderer)
+pmremGenerator.compileEquirectangularShader()
+
+new THREE.RGBELoader()
+.load("textures/studio.hdr", function(texture){
+
+const envMap = pmremGenerator.fromEquirectangular(texture).texture
+
+scene.environment = envMap
+
+})
 
 
 
 /* LIGHTING */
 
-const keyLight = new THREE.DirectionalLight(0xffffff,1.2)
+const keyLight = new THREE.DirectionalLight(0xffffff,3)
 keyLight.position.set(3,3,3)
 scene.add(keyLight)
 
-const fillLight = new THREE.DirectionalLight(0xffffff,0.5)
+const fillLight = new THREE.DirectionalLight(0xffffff,2)
 fillLight.position.set(-3,1,-2)
 scene.add(fillLight)
 
-const ambient = new THREE.AmbientLight(0xffffff,0.7)
+const ambient = new THREE.AmbientLight(0xffffff,1.5)
 scene.add(ambient)
+
+const topLight = new THREE.DirectionalLight(0xffffff,2)
+topLight.position.set(0,5,0)
+scene.add(topLight)
 
 
 
@@ -70,7 +95,24 @@ function(gltf){
 
 model = gltf.scene
 
-model.scale.set(0.9,0.9,0.9)
+model.scale.set(0.8,0.8,0.8)
+
+
+
+/* AJUSTE MATERIAL METÁLICO */
+
+model.traverse((child)=>{
+
+if(child.isMesh){
+
+child.material.metalness = 1
+child.material.roughness = 0.2
+
+}
+
+})
+
+
 
 scene.add(model)
 
@@ -119,3 +161,6 @@ camera.updateProjectionMatrix()
 renderer.setSize(width,height)
 
 })
+
+
+
