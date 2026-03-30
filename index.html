@@ -1,69 +1,40 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <title>OneBlast</title>
 
 <link rel="stylesheet" href="style.css">
 <link rel="icon" href="favicon.png" type="image/png">
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.128/build/three.min.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/controls/OrbitControls.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/GLTFLoader.js"></script>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.128/examples/js/loaders/RGBELoader.js"></script>
-
-
 </head>
-
-
 <body>
 
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <div class="nav-logo">OneBlast</div>
+    <div class="nav-toggle"></div>
+  </div>
+  <div class="nav-menu">
+    <a href="#">Inicio</a>
+    <a href="#">Productos</a>
+    <a href="#">About</a>
+    <a href="#">Contacto</a>
+  </div>
+</nav>
 
-<section class="product-section">
-
-<div class="product-container">
-
-
-<div class="product-info">
-
-<h1>OneBlast</h1>
-
-<p>
-Making things happen, one blast at a time.
-</p>
-<p>
-OneBlast is a powerful and versatile tool designed to help you achieve your goals with ease. 
-<p>
-Whether you're looking to boost productivity, streamline workflows, or simply get things done faster, OneBlast has got you covered. 
-</p>
-<p>
-With its intuitive interface and robust features, OneBlast is the ultimate solution for anyone looking to make things happen efficiently and effectively.
-</p>
+<!-- Carousel -->
+<div class="carousel">
+  <div class="arrow prev">&#10094;</div>
+  <div class="arrow next">&#10095;</div>
 </div>
-
-
-<div class="product-viewer">
-
-<div id="loader">Loading...</div>
-
-<canvas id="webgl"></canvas>
-
-</div>
-
-
-</div>
-
-</section>
-
 
 <script src="app.js"></script>
-
 </body>
 </html>
