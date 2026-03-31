@@ -79,8 +79,8 @@ nextArrow.addEventListener("click",goNext);
 
 /* DRAG CONTROLADO (sin rotación libre) */
 
-const MAX_ANGLE = 10; // límite visual
-const DRAG_LIMIT = 80;
+const MAX_ANGLE = 6; // menos exagerado
+const DRAG_LIMIT = 140; // 🔥 mucho más control
 
 carousel.addEventListener("mousedown",e=>{
   isDragging=true;
@@ -104,8 +104,10 @@ window.addEventListener("mouseup",()=>{
   if(!isDragging) return;
   isDragging=false;
 
-  if(deltaX > DRAG_LIMIT/2) goPrev();
-  else if(deltaX < -DRAG_LIMIT/2) goNext();
+  const threshold = 90; // 🔥 control real
+
+  if(deltaX > threshold) goPrev();
+  else if(deltaX < -threshold) goNext();
 
   slides[current].style.transform="";
   deltaX=0;
