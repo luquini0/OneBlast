@@ -3,6 +3,16 @@ const nav = document.querySelector(".nav");
 const navInner = document.querySelector(".nav-inner");
 navInner.onclick = () => nav.classList.toggle("open");
 
+/* SUBMENU MOBILE */
+document.querySelectorAll(".nav-item").forEach(item=>{
+  item.addEventListener("click",(e)=>{
+    if(window.innerWidth < 900){
+      e.stopPropagation();
+      item.classList.toggle("open");
+    }
+  });
+});
+
 /* =========================
    MULTI-PRODUCT CAROUSEL + WEBGL
 ========================= */
@@ -17,7 +27,6 @@ const products = [
   { name: "Producto 5", description: "Slide adicional 5", model: "models/drone.glb", scale: 0.8 },
   { name: "Producto 5", description: "Slide adicional 5", model: "models/mouth.glb", scale: 0.8 },
   { name: "Producto 6", description: "Slide adicional 6", model: "models/product1.glb", scale: 0.8 }
-  
 ];
 
 // Crear slides
@@ -68,32 +77,65 @@ slides.forEach(slide=>{
 prevArrow.addEventListener("click",goPrev);
 nextArrow.addEventListener("click",goNext);
 
-carousel.addEventListener("mousedown",e=>{ isDragging=true; startX=e.clientX; deltaX=0; });
+/* DRAG CONTROLADO (sin rotación libre) */
+
+const MAX_ANGLE = 10; // límite visual
+const DRAG_LIMIT = 80;
+
+carousel.addEventListener("mousedown",e=>{
+  isDragging=true;
+  startX=e.clientX;
+  deltaX=0;
+});
+
 window.addEventListener("mousemove",e=>{
   if(!isDragging) return;
+
   deltaX=e.clientX-startX;
-  slides[current].style.transform=`translate(-50%,-50%) rotateY(${deltaX*0.08}deg)`;
+
+  // clamp del movimiento
+  const clamped = Math.max(-DRAG_LIMIT, Math.min(DRAG_LIMIT, deltaX));
+  const angle = (clamped / DRAG_LIMIT) * MAX_ANGLE;
+
+  slides[current].style.transform = `translate(-50%,-50%) rotateY(${angle}deg)`;
 });
+
 window.addEventListener("mouseup",()=>{
   if(!isDragging) return;
   isDragging=false;
-  if(deltaX>70) goPrev();
-  else if(deltaX<-70) goNext();
+
+  if(deltaX > DRAG_LIMIT/2) goPrev();
+  else if(deltaX < -DRAG_LIMIT/2) goNext();
+
   slides[current].style.transform="";
   deltaX=0;
 });
 
-carousel.addEventListener("touchstart", e=>{ isDragging=true; startX=e.touches[0].clientX; deltaX=0; });
+/* TOUCH */
+carousel.addEventListener("touchstart", e=>{
+  isDragging=true;
+  startX=e.touches[0].clientX;
+  deltaX=0;
+});
+
 carousel.addEventListener("touchmove", e=>{
   if(!isDragging) return;
+
   deltaX=e.touches[0].clientX-startX;
-  slides[current].style.transform=`translate(-50%,-50%) rotateY(${deltaX*0.08}deg)`;
+
+  const clamped = Math.max(-DRAG_LIMIT, Math.min(DRAG_LIMIT, deltaX));
+  const angle = (clamped / DRAG_LIMIT) * MAX_ANGLE;
+
+  slides[current].style.transform = `translate(-50%,-50%) rotateY(${angle}deg)`;
 });
+
 carousel.addEventListener("touchend", ()=>{
   if(!isDragging) return;
   isDragging=false;
-  if(deltaX>50) goPrev();
-  else if(deltaX<-50) goNext();
+
+  if(deltaX > DRAG_LIMIT/2) goPrev();
+  else if(deltaX < -DRAG_LIMIT/2) goNext();
+
   slides[current].style.transform="";
   deltaX=0;
 });
@@ -116,7 +158,6 @@ hdrLoader.load("textures/studio.hdr", texture=>{
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.6;
 
-    // PMREM usando el renderer real
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
     const envMap = pmremGenerator.fromEquirectangular(texture).texture;
@@ -176,3 +217,65 @@ window.addEventListener("resize", ()=>{
     allRenderers[i].setSize(canvas.clientWidth, canvas.clientHeight);
   });
 });
+
+/* LOGO 3D MINI + HDR */
+
+const logoCanvas = document.querySelector(".logo-canvas");
+
+const logoRenderer = new THREE.WebGLRenderer({
+  canvas: logoCanvas,
+  alpha: true,
+  antialias: true
+});
+
+logoRenderer.setSize(60,60);
+logoRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+logoRenderer.outputEncoding = THREE.sRGBEncoding;
+logoRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+logoRenderer.toneMappingExposure = 1.5;
+
+const logoScene = new THREE.Scene();
+
+const logoCamera = new THREE.PerspectiveCamera(45,1,0.1,100);
+logoCamera.position.set(0,0,3);
+
+const logoControls = new THREE.OrbitControls(logoCamera, logoCanvas);
+logoControls.enableZoom=false;
+logoControls.enablePan=false;
+logoControls.enableDamping=true;
+
+/* HDR */
+const logoHDR = new THREE.RGBELoader().setDataType(THREE.UnsignedByteType);
+
+logoHDR.load("textures/studio.hdr", (texture)=>{
+  const pmrem = new THREE.PMREMGenerator(logoRenderer);
+  const envMap = pmrem.fromEquirectangular(texture).texture;
+  logoScene.environment = envMap;
+});
+
+/* luces suaves */
+const light = new THREE.AmbientLight(0xffffff,0.4);
+logoScene.add(light);
+
+/* modelo */
+const loader = new THREE.GLTFLoader();
+let logoModel;
+
+loader.load("models/bomba.glb",(gltf)=>{
+  logoModel = gltf.scene;
+  logoModel.scale.set(0.6,0.6,0.6);
+  logoScene.add(logoModel);
+});
+
+/* animación */
+function animateLogo(){
+  requestAnimationFrame(animateLogo);
+
+  if(logoModel){
+    logoModel.rotation.y += 0.01;
+  }
+
+  logoControls.update();
+  logoRenderer.render(logoScene,logoCamera);
+}
+animateLogo();
