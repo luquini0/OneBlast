@@ -385,7 +385,17 @@ body{
   }
 
   .arrow{
-    font-size:42px;
+    width:60px;
+    height:60px;
+    font-size:32px;
+  }
+
+  .arrow.prev{
+    left:10px;
+  }
+
+  .arrow.next{
+    right:10px;
   }
 }
 
