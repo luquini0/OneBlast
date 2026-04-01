@@ -80,7 +80,8 @@ nextArrow.addEventListener("click",goNext);
 /* DRAG CONTROLADO (sin rotación libre) */
 
 const MAX_ANGLE = 6; // menos exagerado
-const DRAG_LIMIT = 140; // 🔥 mucho más control
+const DRAG_LIMIT = 180;
+const isMobile = window.innerWidth < 768;
 
 carousel.addEventListener("mousedown",e=>{
   isDragging=true;
@@ -135,8 +136,10 @@ carousel.addEventListener("touchend", ()=>{
   if(!isDragging) return;
   isDragging=false;
 
-  if(deltaX > DRAG_LIMIT/2) goPrev();
-  else if(deltaX < -DRAG_LIMIT/2) goNext();
+  const threshold = isMobile ? 120 : 90;
+
+  if(deltaX > threshold) goPrev();
+  else if(deltaX < -threshold) goNext();
 
   slides[current].style.transform="";
   deltaX=0;
@@ -239,7 +242,7 @@ logoRenderer.toneMappingExposure = 1.5;
 const logoScene = new THREE.Scene();
 
 const logoCamera = new THREE.PerspectiveCamera(45,1,0.1,100);
-logoCamera.position.set(0,0,3);
+logoCamera.position.set(0,0,4);
 
 const logoControls = new THREE.OrbitControls(logoCamera, logoCanvas);
 logoControls.enableZoom=false;
