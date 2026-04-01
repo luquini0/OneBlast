@@ -80,8 +80,7 @@ nextArrow.addEventListener("click",goNext);
 /* DRAG CONTROLADO (sin rotación libre) */
 
 const MAX_ANGLE = 6; // menos exagerado
-const DRAG_LIMIT = 180;
-const isMobile = window.innerWidth < 768;
+const DRAG_LIMIT = 140; // 🔥 mucho más control
 
 carousel.addEventListener("mousedown",e=>{
   isDragging=true;
@@ -136,10 +135,8 @@ carousel.addEventListener("touchend", ()=>{
   if(!isDragging) return;
   isDragging=false;
 
-  const threshold = isMobile ? 120 : 90;
-
-  if(deltaX > threshold) goPrev();
-  else if(deltaX < -threshold) goNext();
+  if(deltaX > DRAG_LIMIT/2) goPrev();
+  else if(deltaX < -DRAG_LIMIT/2) goNext();
 
   slides[current].style.transform="";
   deltaX=0;
