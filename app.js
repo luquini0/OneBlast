@@ -2,14 +2,17 @@
 const nav = document.querySelector(".nav");
 const navInner = document.querySelector(".nav-inner");
 navInner.onclick = () => nav.classList.toggle("open");
+navInner.addEventListener("keydown", e=>{
+  if(e.key==="Enter" || e.key===" "){ e.preventDefault(); nav.classList.toggle("open"); }
+});
 
-/* SUBMENU MOBILE */
+/* MENU ITEMS -> JUMP TO PRODUCT */
 document.querySelectorAll(".nav-item").forEach(item=>{
   item.addEventListener("click",(e)=>{
-    if(window.innerWidth < 900){
-      e.stopPropagation();
-      item.classList.toggle("open");
-    }
+    e.stopPropagation();
+    const index = Number(item.dataset.index);
+    if(!Number.isNaN(index)) goToSlide(index);
+    nav.classList.remove("open");
   });
 });
 
@@ -37,6 +40,7 @@ products.forEach((p,i)=>{
   section.innerHTML = `
     <div class="product-container">
       <div class="product-info">
+        <span class="eyebrow">PRODUCT ${String(i+1).padStart(2,"0")} / ${String(products.length).padStart(2,"0")}</span>
         <h1>${p.name}</h1>
         <p>${p.description}</p>
       </div>
@@ -66,6 +70,7 @@ function updateSlides(){
 updateSlides();
 function goNext(){ current=(current+1)%slides.length; updateSlides();}
 function goPrev(){ current=(current-1+slides.length)%slides.length; updateSlides(); }
+function goToSlide(i){ if(i<0||i>=slides.length) return; current=i; updateSlides(); }
 
 slides.forEach(slide=>{
   slide.addEventListener("click",()=>{
