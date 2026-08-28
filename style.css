@@ -307,6 +307,22 @@ body{
   margin-bottom:10px;
 }
 
+.evo-badge{
+  display:inline-block;
+  margin-left:10px;
+  padding:4px 11px;
+  border-radius:999px;
+  background:rgba(255,77,28,.14);
+  border:1px solid rgba(255,77,28,.35);
+  color:var(--accent);
+  font-family:'Space Grotesk', sans-serif;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  vertical-align:middle;
+}
+
 .product-info h1{
   font-family:'Space Grotesk', sans-serif;
   font-size:clamp(36px,5vw,68px);

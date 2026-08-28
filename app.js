@@ -22,18 +22,52 @@ document.querySelectorAll(".nav-item").forEach(item=>{
 const carousel = document.querySelector(".carousel");
 
 const products = [
+  // --- entrada: siempre primero ---
   { name: "OneBlast", description: "Making things happen, one blast at a time.", model: "models/bomba.glb", scale: 0.8 },
-  { name: "Recon Drone", description: "Ojos en el cielo antes de que todo explote.", model: "models/drone.glb", scale: 0.8 },
-  { name: "Canister Táctico", description: "Carcasa de gunmetal cepillado, lista para la acción.", model: "models/product2.glb", scale: 0.8 },
+
+  // --- de acá en más: complejidad, color y detalle creciendo hacia la derecha ---
   { name: "Caja Blindada", description: "Almacenamiento reforzado para el resto del kit.", model: "models/product1.glb", scale: 1.1 },
-  { name: "Ojiva OneBlast", description: "Perfil aerodinámico, punta de impacto marcada.", procedural: "warhead", scale: 0.8 },
-  { name: "Mina de Impacto", description: "Núcleo con púas radiales, activación al contacto.", procedural: "spikemine", scale: 0.8 },
-  { name: "Detonador Remoto", description: "Botón rojo, antena lista, control total.", procedural: "detonator", scale: 0.8 },
   { name: "Bengala de Señal", description: "Punta encendida, mango firme, visible a la distancia.", procedural: "flare", scale: 0.85 },
+  { name: "Detonador Remoto", description: "Botón rojo, antena lista, control total.", procedural: "detonator", scale: 0.8 },
+  { name: "Cohete de Mano", description: "Perfil delgado, cabeza explosiva liviana.", procedural: "rocket", scale: 0.85 },
   { name: "Barril de Riesgo", description: "Bandas de advertencia, carga a presión.", procedural: "hazardbarrel", scale: 0.85 },
   { name: "Carga Táctica", description: "Bloque compacto, temporizador activo.", procedural: "c4block", scale: 0.85 },
-  { name: "Cohete de Mano", description: "Perfil delgado, cabeza explosiva liviana.", procedural: "rocket", scale: 0.85 },
-  { name: "Núcleo de Plasma", description: "Energía contenida en órbitas concéntricas.", procedural: "plasmacore", scale: 0.85 }
+  { name: "Ojiva OneBlast", description: "Perfil aerodinámico, punta de impacto marcada.", procedural: "warhead", scale: 0.8 },
+  { name: "Canister Táctico", description: "Carcasa de gunmetal cepillado, lista para la acción.", model: "models/product2.glb", scale: 0.8 },
+
+  { name: "Granada de Fragmentación", description: "Grilla de fractura clásica, anilla y palanca de seguridad.", procedural: "grenade", scale: 0.85, badge: "Mk.I" },
+  { name: "Granada de Fragmentación Mk.II", description: "Misma base, carga expuesta y ventilación de sobrepresión.", procedural: "grenade2", scale: 0.85, badge: "Evolución" },
+
+  { name: "Mina de Impacto", description: "Núcleo con púas radiales, activación al contacto.", procedural: "spikemine", scale: 0.8 },
+
+  { name: "Lanzador Portátil", description: "Tubo al hombro, mira simple, listo para disparar.", procedural: "launcher", scale: 0.8, badge: "Mk.I" },
+  { name: "Lanzador Portátil Avanzado", description: "Mira óptica activa y toberas de escape traseras.", procedural: "launcher2", scale: 0.8, badge: "Evolución" },
+
+  { name: "Núcleo de Plasma", description: "Energía contenida en órbitas concéntricas.", procedural: "plasmacore", scale: 0.85 },
+
+  { name: "Pistola de Pulso", description: "Compacta, directa, sin partes de más.", procedural: "pulsegun", scale: 0.85, badge: "Mk.I" },
+  { name: "Pistola de Pulso Sobrecargada", description: "Núcleo de cañón visible y bobinas de refuerzo activas.", procedural: "pulsegun2", scale: 0.85, badge: "Evolución" },
+
+  { name: "Torreta Automática", description: "Trípode, cuerpo y cañón — vigilancia básica.", procedural: "turret", scale: 0.75, badge: "Mk.I" },
+  { name: "Torreta Automática Elite", description: "Radar giratorio, mira láser activa y cargadores dobles.", procedural: "turret2", scale: 0.75, badge: "Evolución" },
+
+  { name: "Micro-Dron de Reconocimiento", description: "Cuerpo liviano, cuatro rotores, perfil silencioso.", procedural: "microdrone", scale: 0.85, badge: "Mk.I" },
+  { name: "Micro-Dron de Combate", description: "Casco facetado, ojo sensor activo y módulo de armas.", procedural: "microdrone2", scale: 0.85, badge: "Evolución" },
+
+  { name: "Placa Blindada", description: "Protección plana, agarre simple, sin adornos.", procedural: "armorplate", scale: 0.85, badge: "Mk.I" },
+  { name: "Placa Blindada Reforzada", description: "Doble capa remachada con núcleo de energía activo.", procedural: "armorplate2", scale: 0.85, badge: "Evolución" },
+
+  { name: "Recon Drone", description: "Ojos en el cielo antes de que todo explote.", model: "models/drone.glb", scale: 0.8 },
+
+  { name: "Núcleo de Contención", description: "Carcasa geodésica, giroscopio triple y plasma activo en el centro.", procedural: "containment", scale: 0.85 },
+
+  // --- top de gama: 5 modelos descargados, licencia CC0 (Quaternius / mastjie vía poly.pizza), sin marca.
+  //     keepMaterial:true = no forzar cromado, se muestran con su color e ilustración originales ---
+  { name: "Nave de Combate", description: "Perfil aerodinámico, lista para atravesar cualquier bloqueo.", model: "models/spaceship.glb", scale: 0.9, badge: "CC0", keepMaterial: true },
+  { name: "Mech de Asalto", description: "Bípedo blindado, potencia de fuego a escala.", model: "models/mech.glb", scale: 0.9, badge: "CC0", keepMaterial: true },
+  { name: "Guerrero de Élite", description: "Equipo completo, listo para el frente.", model: "models/warrior.glb", scale: 0.9, badge: "CC0", keepMaterial: true },
+  { name: "Astronauta Táctico", description: "Traje reforzado y arma secundaria a mano.", model: "models/astronaut.glb", scale: 0.9, badge: "CC0", keepMaterial: true },
+  { name: "Tanque Blindado", description: "Torreta, cañón y orugas — la pieza más pesada del catálogo.", model: "models/tank.glb", scale: 0.75, badge: "CC0", keepMaterial: true }
 ];
 
 // Crear slides
@@ -45,6 +79,7 @@ products.forEach((p,i)=>{
     <div class="product-container">
       <div class="product-info">
         <span class="eyebrow">PRODUCT ${String(i+1).padStart(2,"0")} / ${String(products.length).padStart(2,"0")}</span>
+        ${p.badge ? `<span class="evo-badge">${p.badge}</span>` : ""}
         <h1>${p.name}</h1>
         <p>${p.description}</p>
         <a href="https://mpago.la/11P89Mz" target="_blank" class="buy-button">Comprar ahora</a>
@@ -343,6 +378,405 @@ function buildProceduralProduct(type){
     group.add(ringB);
   }
 
+  if(type === "grenade"){
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x3d4a35 });
+    const ridgeMat = new THREE.MeshStandardMaterial({ color:0x232b1c });
+    const pinMat = new THREE.MeshStandardMaterial({ color:0xc9a227 });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 20), bodyMat);
+    group.add(body);
+
+    [-0.25, 0, 0.25].forEach((y)=>{
+      const r = Math.sqrt(Math.max(0.25 - y*y, 0.02));
+      const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.018, 8, 32), ridgeMat);
+      band.rotation.x = Math.PI/2;
+      band.position.y = y;
+      group.add(band);
+    });
+
+    [0, Math.PI/2].forEach((rotY)=>{
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.018, 8, 32), ridgeMat);
+      band.rotation.y = rotY;
+      group.add(band);
+    });
+
+    const pinRing = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.016, 8, 24), pinMat);
+    pinRing.position.set(0, 0.56, 0);
+    pinRing.rotation.x = Math.PI/2;
+    group.add(pinRing);
+
+    const lever = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 0.04), pinMat);
+    lever.position.set(0.24, 0.4, 0);
+    group.add(lever);
+  }
+
+  if(type === "grenade2"){
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x4a5a3f, emissive:0x1a2410, emissiveIntensity:0.15 });
+    const ridgeMat = new THREE.MeshStandardMaterial({ color:0xc9a227 });
+    const pinMat = new THREE.MeshStandardMaterial({ color:0xd8b019 });
+    const coreMat = new THREE.MeshStandardMaterial({ color:0xff5522, emissive:0xff3300, emissiveIntensity:0.9 });
+    const ventMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.5, 24, 20), bodyMat);
+    group.add(body);
+
+    [-0.25, 0, 0.25].forEach((y)=>{
+      const r = Math.sqrt(Math.max(0.25 - y*y, 0.02));
+      const band = new THREE.Mesh(new THREE.TorusGeometry(r, 0.02, 8, 32), ridgeMat);
+      band.rotation.x = Math.PI/2;
+      band.position.y = y;
+      group.add(band);
+    });
+
+    [0, Math.PI/2].forEach((rotY)=>{
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.5, 0.02, 8, 32), ridgeMat);
+      band.rotation.y = rotY;
+      group.add(band);
+    });
+
+    const pinRing = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.018, 8, 24), pinMat);
+    pinRing.position.set(0, 0.56, 0);
+    pinRing.rotation.x = Math.PI/2;
+    group.add(pinRing);
+
+    const lever = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.4, 0.04), pinMat);
+    lever.position.set(0.24, 0.4, 0);
+    group.add(lever);
+
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.16, 0), coreMat);
+    group.add(core);
+
+    for(let i=0;i<3;i++){
+      const angle = (i/3) * Math.PI*2;
+      const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.08, 10), ventMat);
+      vent.position.set(Math.cos(angle)*0.48, -0.1, Math.sin(angle)*0.48);
+      vent.rotation.z = Math.PI/2;
+      vent.rotation.y = angle;
+      group.add(vent);
+    }
+  }
+
+  if(type === "launcher"){
+    const tubeMat = new THREE.MeshStandardMaterial({ color:0x4a4f42 });
+    const restMat = new THREE.MeshStandardMaterial({ color:0x2b2e26 });
+    const sightMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 1.8, 20), tubeMat);
+    tube.rotation.z = Math.PI/2;
+    group.add(tube);
+
+    const rest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.12), restMat);
+    rest.position.set(-0.2, -0.24, 0);
+    group.add(rest);
+
+    const sight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.08), sightMat);
+    sight.position.set(0.4, 0.24, 0);
+    group.add(sight);
+  }
+
+  if(type === "launcher2"){
+    const tubeMatA = new THREE.MeshStandardMaterial({ color:0x55603f });
+    const tubeMatB = new THREE.MeshStandardMaterial({ color:0x2b2e26 });
+    const restMat = new THREE.MeshStandardMaterial({ color:0x2b2e26 });
+    const scopeMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+    const lensMat = new THREE.MeshStandardMaterial({ color:0x1fd6ff, emissive:0x1fd6ff, emissiveIntensity:0.8 });
+    const finMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    for(let i=0;i<3;i++){
+      const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.6, 20), i%2===0 ? tubeMatA : tubeMatB);
+      seg.rotation.z = Math.PI/2;
+      seg.position.x = -0.6 + i*0.6;
+      group.add(seg);
+    }
+
+    const rest = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.12), restMat);
+    rest.position.set(-0.2, -0.26, 0);
+    group.add(rest);
+
+    const scope = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.1, 0.08), scopeMat);
+    scope.position.set(0.15, 0.26, 0);
+    group.add(scope);
+
+    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), lensMat);
+    lens.position.set(0.42, 0.26, 0);
+    group.add(lens);
+
+    [-1, 1].forEach((side)=>{
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.3, 0.22), finMat);
+      fin.position.set(-0.95, 0, side*0.15);
+      fin.rotation.z = side * 0.3;
+      group.add(fin);
+    });
+  }
+
+  if(type === "pulsegun"){
+    const gripMat = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x5a5f66 });
+    const barrelMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.42, 0.14), gripMat);
+    grip.position.set(-0.1, -0.3, 0);
+    grip.rotation.z = 0.25;
+    group.add(grip);
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.18), bodyMat);
+    body.position.set(0.05, 0, 0);
+    group.add(body);
+
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 16), barrelMat);
+    barrel.rotation.z = Math.PI/2;
+    barrel.position.set(0.55, 0.02, 0);
+    group.add(barrel);
+  }
+
+  if(type === "pulsegun2"){
+    const gripMat = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x6a6f78, emissive:0x111111, emissiveIntensity:0.2 });
+    const barrelMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+    const coreMat = new THREE.MeshStandardMaterial({ color:0xff7a1a, emissive:0xff5500, emissiveIntensity:0.9 });
+    const coilMat = new THREE.MeshStandardMaterial({ color:0xd8b019 });
+    const finMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    const grip = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.42, 0.14), gripMat);
+    grip.position.set(-0.1, -0.3, 0);
+    grip.rotation.z = 0.25;
+    group.add(grip);
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.22, 0.18), bodyMat);
+    body.position.set(0.05, 0, 0);
+    group.add(body);
+
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.55, 16), barrelMat);
+    barrel.rotation.z = Math.PI/2;
+    barrel.position.set(0.58, 0.02, 0);
+    group.add(barrel);
+
+    const coreBeam = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.56, 12), coreMat);
+    coreBeam.rotation.z = Math.PI/2;
+    coreBeam.position.set(0.58, 0.02, 0);
+    group.add(coreBeam);
+
+    [0.4, 0.58, 0.76].forEach((x)=>{
+      const coil = new THREE.Mesh(new THREE.TorusGeometry(0.08, 0.015, 8, 20), coilMat);
+      coil.rotation.y = Math.PI/2;
+      coil.position.set(x, 0.02, 0);
+      group.add(coil);
+    });
+
+    for(let i=0;i<3;i++){
+      const fin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.16), finMat);
+      fin.position.set(-0.05 + i*0.1, 0.13, 0);
+      group.add(fin);
+    }
+  }
+
+  if(type === "turret"){
+    const legMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x5a5f66 });
+    const barrelMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    for(let i=0;i<3;i++){
+      const angle = (i/3) * Math.PI*2;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8), legMat);
+      leg.position.set(Math.cos(angle)*0.35, -0.55, Math.sin(angle)*0.35);
+      leg.rotation.x = Math.cos(angle) * 0.35;
+      leg.rotation.z = Math.sin(angle) * -0.35;
+      group.add(leg);
+    }
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.4), bodyMat);
+    group.add(body);
+
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6, 14), barrelMat);
+    barrel.rotation.z = Math.PI/2;
+    barrel.position.set(0.55, 0.05, 0);
+    group.add(barrel);
+  }
+
+  if(type === "turret2"){
+    const legMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x6a6f78 });
+    const barrelMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+    const dishMat = new THREE.MeshStandardMaterial({ color:0xb3b8c0 });
+    const lensMat = new THREE.MeshStandardMaterial({ color:0xff2222, emissive:0xff0000, emissiveIntensity:0.9 });
+    const ammoMat = new THREE.MeshStandardMaterial({ color:0xd8b019 });
+    const greebleMat = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+
+    for(let i=0;i<3;i++){
+      const angle = (i/3) * Math.PI*2;
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 8), legMat);
+      leg.position.set(Math.cos(angle)*0.35, -0.55, Math.sin(angle)*0.35);
+      leg.rotation.x = Math.cos(angle) * 0.35;
+      leg.rotation.z = Math.sin(angle) * -0.35;
+      group.add(leg);
+    }
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.4), bodyMat);
+    group.add(body);
+
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.62, 14), barrelMat);
+    barrel.rotation.z = Math.PI/2;
+    barrel.position.set(0.56, 0.05, 0);
+    group.add(barrel);
+
+    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), lensMat);
+    lens.position.set(0.86, 0.05, 0);
+    group.add(lens);
+
+    const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 24), dishMat);
+    dish.position.set(0, 0.24, 0);
+    group.add(dish);
+
+    [-1, 1].forEach((side)=>{
+      const ammo = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 0.12), ammoMat);
+      ammo.position.set(-0.05, -0.02, side*0.28);
+      group.add(ammo);
+    });
+
+    for(let i=0;i<6;i++){
+      const g = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), greebleMat);
+      g.position.set(-0.2 + (i%3)*0.16, 0.14, (i<3?1:-1)*0.21);
+      group.add(g);
+    }
+  }
+
+  if(type === "microdrone"){
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x8a8f96 });
+    const armMat = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+    const discMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    const body = new THREE.Mesh(new THREE.SphereGeometry(0.26, 20, 16), bodyMat);
+    group.add(body);
+
+    for(let i=0;i<4;i++){
+      const angle = (i/4) * Math.PI*2 + Math.PI/4;
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.55, 8), armMat);
+      arm.position.set(Math.cos(angle)*0.3, 0, Math.sin(angle)*0.3);
+      arm.rotation.z = Math.PI/2;
+      arm.rotation.y = -angle;
+      group.add(arm);
+
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.015, 16), discMat);
+      disc.position.set(Math.cos(angle)*0.55, 0, Math.sin(angle)*0.55);
+      group.add(disc);
+    }
+  }
+
+  if(type === "microdrone2"){
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x6a6f78 });
+    const armMat = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+    const discMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+    const eyeMat = new THREE.MeshStandardMaterial({ color:0xff2222, emissive:0xff0000, emissiveIntensity:0.9 });
+    const podMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
+    const thrusterMat = new THREE.MeshStandardMaterial({ color:0x1fd6ff, emissive:0x1fd6ff, emissiveIntensity:0.7 });
+
+    const body = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 1), bodyMat);
+    group.add(body);
+
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 10), eyeMat);
+    eye.position.set(0, 0, 0.3);
+    group.add(eye);
+
+    for(let i=0;i<4;i++){
+      const angle = (i/4) * Math.PI*2 + Math.PI/4;
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.6, 8), armMat);
+      arm.position.set(Math.cos(angle)*0.32, 0, Math.sin(angle)*0.32);
+      arm.rotation.z = Math.PI/2;
+      arm.rotation.y = -angle;
+      group.add(arm);
+
+      const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.015, 16), discMat);
+      disc.position.set(Math.cos(angle)*0.6, 0, Math.sin(angle)*0.6);
+      group.add(disc);
+
+      const thruster = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.012, 8, 20), thrusterMat);
+      thruster.position.set(Math.cos(angle)*0.6, -0.03, Math.sin(angle)*0.6);
+      group.add(thruster);
+    }
+
+    const pod = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.1, 0.3), podMat);
+    pod.position.set(0, -0.24, 0);
+    group.add(pod);
+  }
+
+  if(type === "armorplate"){
+    const plateMat = new THREE.MeshStandardMaterial({ color:0x4a4f56 });
+    const handleMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 0.06), plateMat);
+    group.add(plate);
+
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 10), handleMat);
+    handle.rotation.z = Math.PI/2;
+    handle.position.set(0, 0, 0.1);
+    group.add(handle);
+  }
+
+  if(type === "armorplate2"){
+    const plateMat = new THREE.MeshStandardMaterial({ color:0x5a5f66 });
+    const backPlateMat = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+    const rivetMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+    const coreMat = new THREE.MeshStandardMaterial({ color:0x1fd6ff, emissive:0x1fd6ff, emissiveIntensity:0.9 });
+    const handleMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
+
+    const backPlate = new THREE.Mesh(new THREE.BoxGeometry(0.98, 1.28, 0.05), backPlateMat);
+    backPlate.position.z = -0.05;
+    group.add(backPlate);
+
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.2, 0.06), plateMat);
+    group.add(plate);
+
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.14, 0), coreMat);
+    core.position.z = 0.06;
+    group.add(core);
+
+    const rivetGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.04, 8);
+    const marginX = 0.4, marginY = 0.55;
+    [[-marginX,-marginY],[marginX,-marginY],[-marginX,marginY],[marginX,marginY],[0,-marginY],[0,marginY]].forEach(([x,y])=>{
+      const rivet = new THREE.Mesh(rivetGeo, rivetMat);
+      rivet.rotation.x = Math.PI/2;
+      rivet.position.set(x, y, 0.04);
+      group.add(rivet);
+    });
+
+    const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 10), handleMat);
+    handle.rotation.z = Math.PI/2;
+    handle.position.set(0, 0, 0.12);
+    group.add(handle);
+  }
+
+  if(type === "containment"){
+    const shellMat = new THREE.MeshBasicMaterial({ color:0xf3ede0, wireframe:true, transparent:true, opacity:0.35 });
+    const ringMat = new THREE.MeshStandardMaterial({ color:0x8a8f96 });
+    const coreMat = new THREE.MeshStandardMaterial({ color:0xffb347, emissive:0xff9900, emissiveIntensity:1.0 });
+    const moteMat = new THREE.MeshStandardMaterial({ color:0xffd27a, emissive:0xffb347, emissiveIntensity:0.8 });
+
+    const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(0.75, 1), shellMat);
+    group.add(shell);
+
+    const ringDefs2 = [
+      { r:0.55, rotX:0, rotY:0 },
+      { r:0.55, rotX:Math.PI/2.2, rotY:0.4 },
+      { r:0.55, rotX:Math.PI/1.6, rotY:-0.6 }
+    ];
+    ringDefs2.forEach((def)=>{
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(def.r, 0.02, 10, 64), ringMat);
+      ring.rotation.x = def.rotX;
+      ring.rotation.y = def.rotY;
+      group.add(ring);
+    });
+
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.28, 0), coreMat);
+    group.add(core);
+
+    for(let i=0;i<6;i++){
+      const angle = (i/6) * Math.PI*2;
+      const mote = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), moteMat);
+      mote.position.set(Math.cos(angle)*0.9, Math.sin(angle*1.7)*0.25, Math.sin(angle)*0.9);
+      group.add(mote);
+    }
+  }
+
   return group;
 }
 
@@ -399,7 +833,9 @@ hdrLoader.load("textures/studio.hdr", texture=>{
       loader.load(products[i].model, gltf=>{
         const model = gltf.scene;
         model.scale.set(products[i].scale, products[i].scale, products[i].scale);
-        model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
+        if(!products[i].keepMaterial){
+          model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
+        }
         scene.add(model);
         model.visible = (i===0);
         allModels[i]=model;
