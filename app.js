@@ -48,9 +48,6 @@ const products = [
   { name: "Pistola de Pulso", description: "Compacta, directa, sin partes de más.", procedural: "pulsegun", scale: 0.85, badge: "Mk.I" },
   { name: "Pistola de Pulso Sobrecargada", description: "Núcleo de cañón visible y bobinas de refuerzo activas.", procedural: "pulsegun2", scale: 0.85, badge: "Evolución" },
 
-  { name: "Torreta Automática", description: "Trípode, cuerpo y cañón — vigilancia básica.", procedural: "turret", scale: 0.75, badge: "Mk.I" },
-  { name: "Torreta Automática Elite", description: "Radar giratorio, mira láser activa y cargadores dobles.", procedural: "turret2", scale: 0.75, badge: "Evolución" },
-
   { name: "Micro-Dron de Reconocimiento", description: "Cuerpo liviano, cuatro rotores, perfil silencioso.", procedural: "microdrone", scale: 0.85, badge: "Mk.I" },
   { name: "Micro-Dron de Combate", description: "Casco facetado, ojo sensor activo y módulo de armas.", procedural: "microdrone2", scale: 0.85, badge: "Evolución" },
 
@@ -168,6 +165,14 @@ function getOrBuildModel(i){
     if(!products[i].keepMaterial){
       model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
     }
+
+    // Downloaded GLBs don't all have their pivot at the visual center
+    // (game-ready exports are often pivoted at the base/feet). Re-center
+    // on the bounding box so every model frames the same as the procedural ones.
+    const box = new THREE.Box3().setFromObject(model);
+    const center = box.getCenter(new THREE.Vector3());
+    model.position.sub(center);
+
     modelCache[i] = model;
     if(i === current) showModelForSlide(current); // still the active slide once it finishes loading
   });
@@ -696,76 +701,6 @@ function buildProceduralProduct(type){
       const fin = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.03, 0.16), finMat);
       fin.position.set(-0.05 + i*0.1, 0.13, 0);
       group.add(fin);
-    }
-  }
-
-  if(type === "turret"){
-    const legMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
-    const bodyMat = new THREE.MeshStandardMaterial({ color:0x5a5f66 });
-    const barrelMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
-
-    for(let i=0;i<3;i++){
-      const angle = (i/3) * Math.PI*2;
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.9, 8), legMat);
-      leg.position.set(Math.cos(angle)*0.35, -0.55, Math.sin(angle)*0.35);
-      leg.rotation.x = Math.cos(angle) * 0.35;
-      leg.rotation.z = Math.sin(angle) * -0.35;
-      group.add(leg);
-    }
-
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.4), bodyMat);
-    group.add(body);
-
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.6, 14), barrelMat);
-    barrel.rotation.z = Math.PI/2;
-    barrel.position.set(0.55, 0.05, 0);
-    group.add(barrel);
-  }
-
-  if(type === "turret2"){
-    const legMat = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
-    const bodyMat = new THREE.MeshStandardMaterial({ color:0x6a6f78 });
-    const barrelMat = new THREE.MeshStandardMaterial({ color:0x1c1c1c });
-    const dishMat = new THREE.MeshStandardMaterial({ color:0xb3b8c0 });
-    const lensMat = new THREE.MeshStandardMaterial({ color:0xff2222, emissive:0xff0000, emissiveIntensity:0.9 });
-    const ammoMat = new THREE.MeshStandardMaterial({ color:0xd8b019 });
-    const greebleMat = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
-
-    for(let i=0;i<3;i++){
-      const angle = (i/3) * Math.PI*2;
-      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.9, 8), legMat);
-      leg.position.set(Math.cos(angle)*0.35, -0.55, Math.sin(angle)*0.35);
-      leg.rotation.x = Math.cos(angle) * 0.35;
-      leg.rotation.z = Math.sin(angle) * -0.35;
-      group.add(leg);
-    }
-
-    const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.35, 0.4), bodyMat);
-    group.add(body);
-
-    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.62, 14), barrelMat);
-    barrel.rotation.z = Math.PI/2;
-    barrel.position.set(0.56, 0.05, 0);
-    group.add(barrel);
-
-    const lens = new THREE.Mesh(new THREE.SphereGeometry(0.05, 12, 10), lensMat);
-    lens.position.set(0.86, 0.05, 0);
-    group.add(lens);
-
-    const dish = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.03, 24), dishMat);
-    dish.position.set(0, 0.24, 0);
-    group.add(dish);
-
-    [-1, 1].forEach((side)=>{
-      const ammo = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, 0.12), ammoMat);
-      ammo.position.set(-0.05, -0.02, side*0.28);
-      group.add(ammo);
-    });
-
-    for(let i=0;i<6;i++){
-      const g = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.05, 0.05), greebleMat);
-      g.position.set(-0.2 + (i%3)*0.16, 0.14, (i<3?1:-1)*0.21);
-      group.add(g);
     }
   }
 
