@@ -28,7 +28,12 @@ const products = [
   { name: "Caja Blindada", description: "Almacenamiento reforzado para el resto del kit.", model: "models/product1.glb", scale: 1.1 },
   { name: "Ojiva OneBlast", description: "Perfil aerodinámico, punta de impacto marcada.", procedural: "warhead", scale: 0.8 },
   { name: "Mina de Impacto", description: "Núcleo con púas radiales, activación al contacto.", procedural: "spikemine", scale: 0.8 },
-  { name: "Detonador Remoto", description: "Botón rojo, antena lista, control total.", procedural: "detonator", scale: 0.8 }
+  { name: "Detonador Remoto", description: "Botón rojo, antena lista, control total.", procedural: "detonator", scale: 0.8 },
+  { name: "Bengala de Señal", description: "Punta encendida, mango firme, visible a la distancia.", procedural: "flare", scale: 0.85 },
+  { name: "Barril de Riesgo", description: "Bandas de advertencia, carga a presión.", procedural: "hazardbarrel", scale: 0.85 },
+  { name: "Carga Táctica", description: "Bloque compacto, temporizador activo.", procedural: "c4block", scale: 0.85 },
+  { name: "Cohete de Mano", description: "Perfil delgado, cabeza explosiva liviana.", procedural: "rocket", scale: 0.85 },
+  { name: "Núcleo de Plasma", description: "Energía contenida en órbitas concéntricas.", procedural: "plasmacore", scale: 0.85 }
 ];
 
 // Crear slides
@@ -42,6 +47,7 @@ products.forEach((p,i)=>{
         <span class="eyebrow">PRODUCT ${String(i+1).padStart(2,"0")} / ${String(products.length).padStart(2,"0")}</span>
         <h1>${p.name}</h1>
         <p>${p.description}</p>
+        <a href="https://mpago.la/11P89Mz" target="_blank" class="buy-button">Comprar ahora</a>
       </div>
       <div class="product-viewer">
         <div class="loader">Loading...</div>
@@ -230,6 +236,111 @@ function buildProceduralProduct(type){
       btn.position.set(-0.25 + i*0.18, 0.31, 0);
       group.add(btn);
     }
+  }
+
+  if(type === "flare"){
+    const gripMat = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x9aa0a6 });
+    const tipMat  = new THREE.MeshStandardMaterial({ color:0xff7a1a, emissive:0xff5500, emissiveIntensity:0.6 });
+
+    const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.18, 0.5, 16), gripMat);
+    grip.position.y = -0.7;
+    group.add(grip);
+
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.3, 16), bodyMat);
+    shaft.position.y = 0.05;
+    group.add(shaft);
+
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(0.14, 0.4, 16), tipMat);
+    tip.position.y = 0.9;
+    group.add(tip);
+
+    const spark = new THREE.Mesh(new THREE.IcosahedronGeometry(0.1, 0), tipMat);
+    spark.position.y = 1.15;
+    group.add(spark);
+  }
+
+  if(type === "hazardbarrel"){
+    const drumMat = new THREE.MeshStandardMaterial({ color:0xd8b019 });
+    const bandMat = new THREE.MeshStandardMaterial({ color:0x1a1a1a });
+    const capMat  = new THREE.MeshStandardMaterial({ color:0x3a3a3a });
+
+    const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.62, 0.62, 1.1, 32), drumMat);
+    group.add(drum);
+
+    [-0.32, 0, 0.32].forEach((y)=>{
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.63, 0.05, 12, 32), bandMat);
+      band.rotation.x = Math.PI/2;
+      band.position.y = y;
+      group.add(band);
+    });
+
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 24), capMat);
+    cap.position.y = 0.6;
+    group.add(cap);
+  }
+
+  if(type === "c4block"){
+    const blockMat = new THREE.MeshStandardMaterial({ color:0xb8ad8f });
+    const wireMat  = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+    const timerMat = new THREE.MeshStandardMaterial({ color:0xff2222, emissive:0xff0000, emissiveIntensity:0.7 });
+
+    const block = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.4, 0.7), blockMat);
+    group.add(block);
+
+    const timer = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.05, 0.2), timerMat);
+    timer.position.set(0.35, 0.225, 0);
+    group.add(timer);
+
+    const timerCase = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.08, 0.28), wireMat);
+    timerCase.position.set(0.35, 0.19, 0);
+    group.add(timerCase);
+
+    for(let i=0;i<2;i++){
+      const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.6, 8), wireMat);
+      wire.position.set(-0.3 + i*0.2, 0.35, 0.15);
+      wire.rotation.z = i===0 ? 0.5 : -0.4;
+      group.add(wire);
+    }
+  }
+
+  if(type === "rocket"){
+    const stickMat = new THREE.MeshStandardMaterial({ color:0x8a8f96 });
+    const bulbMat  = new THREE.MeshStandardMaterial({ color:0xd21f1f });
+    const finMat   = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+
+    const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.7, 12), stickMat);
+    group.add(stick);
+
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.22, 20, 16), bulbMat);
+    bulb.position.y = 0.95;
+    group.add(bulb);
+
+    const finGeo = new THREE.BoxGeometry(0.03, 0.3, 0.28);
+    for(let i=0;i<3;i++){
+      const fin = new THREE.Mesh(finGeo, finMat);
+      const angle = (i/3) * Math.PI*2;
+      fin.position.set(Math.cos(angle)*0.06, -0.75, Math.sin(angle)*0.06);
+      fin.rotation.y = angle;
+      group.add(fin);
+    }
+  }
+
+  if(type === "plasmacore"){
+    const coreMat = new THREE.MeshStandardMaterial({ color:0x1c2b33, emissive:0x1fd6ff, emissiveIntensity:0.9 });
+    const ringMat = new THREE.MeshStandardMaterial({ color:0x8fe9ff, emissive:0x2fd0ff, emissiveIntensity:0.4 });
+
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), coreMat);
+    group.add(core);
+
+    const ringA = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.02, 12, 64), ringMat);
+    ringA.rotation.x = Math.PI/2.3;
+    group.add(ringA);
+
+    const ringB = new THREE.Mesh(new THREE.TorusGeometry(0.68, 0.02, 12, 64), ringMat);
+    ringB.rotation.x = Math.PI/6;
+    ringB.rotation.y = Math.PI/3;
+    group.add(ringB);
   }
 
   return group;
