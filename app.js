@@ -86,7 +86,6 @@ products.forEach((p,i)=>{
       </div>
       <div class="product-viewer">
         <div class="loader">Loading...</div>
-        <canvas class="webgl-canvas"></canvas>
       </div>
     </div>
   `;
@@ -98,6 +97,135 @@ const prevArrow = document.querySelector(".arrow.prev");
 const nextArrow = document.querySelector(".arrow.next");
 let current=0, isDragging=false, startX=0, deltaX=0;
 
+/* =========================
+   THREE.JS WEBGL — UN SOLO CONTEXTO COMPARTIDO
+   30 cards x 1 WebGLRenderer cada una excedía el límite de contextos
+   WebGL simultáneos del navegador (~8-16), y los más viejos se
+   perdían silenciosamente (cards en blanco). Ahora hay un único
+   renderer/canvas que se mueve al viewer activo, y los modelos ya
+   construidos se cachean para que volver a una card sea instantáneo.
+   (Declarado antes de updateSlides() porque esta llama a
+   showModelForSlide() apenas se define, más abajo.)
+========================= */
+const viewers = document.querySelectorAll(".product-viewer");
+
+const viewerCanvas = document.createElement("canvas");
+viewerCanvas.className = "webgl-canvas";
+
+const viewerRenderer = new THREE.WebGLRenderer({ canvas:viewerCanvas, alpha:true, antialias:true });
+viewerRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+viewerRenderer.outputEncoding = THREE.sRGBEncoding;
+viewerRenderer.physicallyCorrectLights = true;
+viewerRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+viewerRenderer.toneMappingExposure = 1.6;
+
+const viewerScene = new THREE.Scene();
+
+const viewerCamera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+viewerCamera.position.set(0,0,5);
+
+const viewerAmbient = new THREE.AmbientLight(0xffffff, 0.5);
+viewerScene.add(viewerAmbient);
+
+const viewerDir = new THREE.DirectionalLight(0xffffff, 2);
+viewerDir.position.set(3,3,3);
+viewerScene.add(viewerDir);
+
+const viewerControls = new THREE.OrbitControls(viewerCamera, viewerRenderer.domElement);
+viewerControls.enableZoom=false;
+viewerControls.enablePan=false;
+viewerControls.enableDamping=true;
+
+const modelCache = {};
+let activeModel = null;
+let viewerReady = false;
+
+function resizeViewerTo(canvas){
+  const width = canvas.clientWidth || 1;
+  const height = canvas.clientHeight || 1;
+  viewerCamera.aspect = width/height;
+  viewerCamera.updateProjectionMatrix();
+  viewerRenderer.setSize(width, height, false);
+}
+
+function getOrBuildModel(i){
+  if(modelCache[i]) return modelCache[i];
+
+  if(products[i].procedural){
+    const model = buildProceduralProduct(products[i].procedural);
+    model.scale.set(products[i].scale, products[i].scale, products[i].scale);
+    model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
+    modelCache[i] = model;
+    return model;
+  }
+
+  // GLB: reserve the slot synchronously, fill it in once loaded
+  modelCache[i] = null;
+  const loader = new THREE.GLTFLoader();
+  loader.load(products[i].model, gltf=>{
+    const model = gltf.scene;
+    model.scale.set(products[i].scale, products[i].scale, products[i].scale);
+    if(!products[i].keepMaterial){
+      model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
+    }
+    modelCache[i] = model;
+    if(i === current) showModelForSlide(current); // still the active slide once it finishes loading
+  });
+  return null;
+}
+
+function showModelForSlide(i){
+  if(!viewerReady) return;
+
+  const viewer = viewers[i];
+  if(!viewer) return;
+
+  if(viewerCanvas.parentElement !== viewer){
+    viewer.insertBefore(viewerCanvas, viewer.firstChild);
+  }
+  resizeViewerTo(viewerCanvas);
+
+  if(activeModel) viewerScene.remove(activeModel);
+
+  const model = getOrBuildModel(i);
+  const loaderEl = viewer.querySelector(".loader");
+
+  if(model){
+    viewerScene.add(model);
+    activeModel = model;
+    if(loaderEl) loaderEl.style.display = "none";
+  } else {
+    activeModel = null;
+    if(loaderEl) loaderEl.style.display = "block";
+  }
+
+  viewerCamera.position.set(0,0,5);
+  viewerControls.target.set(0,0,0);
+  viewerControls.update();
+}
+
+const hdrLoader = new THREE.RGBELoader().setDataType(THREE.UnsignedByteType);
+hdrLoader.load("textures/studio.hdr", texture=>{
+  const pmremGenerator = new THREE.PMREMGenerator(viewerRenderer);
+  pmremGenerator.compileEquirectangularShader();
+  viewerScene.environment = pmremGenerator.fromEquirectangular(texture).texture;
+  pmremGenerator.dispose();
+
+  viewerReady = true;
+  showModelForSlide(current);
+});
+
+function animate(){
+  requestAnimationFrame(animate);
+  viewerControls.update();
+  viewerRenderer.render(viewerScene, viewerCamera);
+}
+animate();
+
+window.addEventListener("resize", ()=>{
+  if(viewerCanvas.parentElement) resizeViewerTo(viewerCanvas);
+});
+
 function updateSlides(){
   slides.forEach(slide=>{
     slide.classList.remove("active","prev","next");
@@ -106,6 +234,7 @@ function updateSlides(){
   slides[current].classList.add("active");
   slides[(current-1+slides.length)%slides.length].classList.add("prev");
   slides[(current+1)%slides.length].classList.add("next");
+  if(typeof showModelForSlide === "function") showModelForSlide(current);
 }
 updateSlides();
 function goNext(){ current=(current+1)%slides.length; updateSlides();}
@@ -779,96 +908,6 @@ function buildProceduralProduct(type){
 
   return group;
 }
-
-/* =========================
-   THREE.JS WEBGL POR SLIDE CON HDR REAL
-========================= */
-const viewers = document.querySelectorAll(".product-viewer");
-const allRenderers = [], allScenes = [], allCameras = [], allControls = [], allModels = [];
-
-const hdrLoader = new THREE.RGBELoader().setDataType(THREE.UnsignedByteType);
-hdrLoader.load("textures/studio.hdr", texture=>{
-  viewers.forEach((viewer,i)=>{
-    const canvas = viewer.querySelector(".webgl-canvas");
-    const renderer = new THREE.WebGLRenderer({canvas, alpha:true, antialias:true});
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
-    renderer.outputEncoding = THREE.sRGBEncoding;
-    renderer.physicallyCorrectLights = true;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.6;
-
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    pmremGenerator.compileEquirectangularShader();
-    const envMap = pmremGenerator.fromEquirectangular(texture).texture;
-
-    const scene = new THREE.Scene();
-    scene.environment = envMap;
-
-    const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth/canvas.clientHeight, 0.1, 100);
-    camera.position.set(0,0,5);
-
-    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambient);
-
-    const dir = new THREE.DirectionalLight(0xffffff, 2);
-    dir.position.set(3,3,3);
-    scene.add(dir);
-
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableZoom=false;
-    controls.enablePan=false;
-    controls.enableDamping=true;
-
-    if(products[i].procedural){
-      const model = buildProceduralProduct(products[i].procedural);
-      model.scale.set(products[i].scale, products[i].scale, products[i].scale);
-      model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
-      scene.add(model);
-      model.visible = (i===0);
-      allModels[i]=model;
-      viewer.querySelector(".loader").style.display="none";
-    } else {
-      const loader = new THREE.GLTFLoader();
-      loader.load(products[i].model, gltf=>{
-        const model = gltf.scene;
-        model.scale.set(products[i].scale, products[i].scale, products[i].scale);
-        if(!products[i].keepMaterial){
-          model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
-        }
-        scene.add(model);
-        model.visible = (i===0);
-        allModels[i]=model;
-        viewer.querySelector(".loader").style.display="none";
-      });
-    }
-
-    allRenderers[i]=renderer;
-    allScenes[i]=scene;
-    allCameras[i]=camera;
-    allControls[i]=controls;
-  });
-});
-
-function animate(){
-  requestAnimationFrame(animate);
-  slides.forEach((slide,i)=>{
-    if(allModels[i]) allModels[i].visible = (i===current);
-    if(allControls[i]) allControls[i].update();
-    if(allRenderers[i]) allRenderers[i].render(allScenes[i], allCameras[i]);
-  });
-}
-animate();
-
-window.addEventListener("resize", ()=>{
-  viewers.forEach((viewer,i)=>{
-    const canvas = viewer.querySelector(".webgl-canvas");
-    if(!canvas) return;
-    allCameras[i].aspect = canvas.clientWidth/canvas.clientHeight;
-    allCameras[i].updateProjectionMatrix();
-    allRenderers[i].setSize(canvas.clientWidth, canvas.clientHeight);
-  });
-});
 
 /* LOGO 3D MINI + HDR */
 
