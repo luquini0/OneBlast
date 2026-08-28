@@ -161,17 +161,33 @@ function getOrBuildModel(i){
   const loader = new THREE.GLTFLoader();
   loader.load(products[i].model, gltf=>{
     const model = gltf.scene;
-    model.scale.set(products[i].scale, products[i].scale, products[i].scale);
-    if(!products[i].keepMaterial){
-      model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
-    }
 
-    // Downloaded GLBs don't all have their pivot at the visual center
-    // (game-ready exports are often pivoted at the base/feet). Re-center
-    // on the bounding box so every model frames the same as the procedural ones.
-    const box = new THREE.Box3().setFromObject(model);
-    const center = box.getCenter(new THREE.Vector3());
-    model.position.sub(center);
+    if(products[i].keepMaterial){
+      // Downloaded GLBs each come in whatever native scale/pivot the
+      // export used (some read as meters, some as centimeters, pivoted
+      // at the base/feet rather than the visual center) — one flat
+      // scale number can't fit all of them. Measure the model first,
+      // then scale so its longest side matches the procedural pieces'
+      // typical size, and center it on that same measurement.
+      const box0 = new THREE.Box3().setFromObject(model);
+      const size0 = box0.getSize(new THREE.Vector3());
+      const center0 = box0.getCenter(new THREE.Vector3());
+      const maxDim = Math.max(size0.x, size0.y, size0.z) || 1;
+      const targetSize = 1.8;
+      const factor = (targetSize / maxDim) * products[i].scale;
+
+      model.scale.set(factor, factor, factor);
+      model.position.set(-center0.x*factor, -center0.y*factor, -center0.z*factor);
+    } else {
+      model.scale.set(products[i].scale, products[i].scale, products[i].scale);
+      model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
+
+      // Center on the bounding box too — a couple of the real assets
+      // aren't pivoted at their visual center either.
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      model.position.sub(center);
+    }
 
     modelCache[i] = model;
     if(i === current) showModelForSlide(current); // still the active slide once it finishes loading
