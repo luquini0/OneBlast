@@ -23,13 +23,12 @@ const carousel = document.querySelector(".carousel");
 
 const products = [
   { name: "OneBlast", description: "Making things happen, one blast at a time.", model: "models/bomba.glb", scale: 0.8 },
-  { name: "Producto 2", description: "Otra vista fullscreen", model: "models/product2.glb", scale: 0.8 },
-  { name: "Producto 3", description: "Otra card flotante", model: "models/product3.glb", scale: 0.8 },
-  { name: "Producto 4", description: "Slide adicional 4", model: "models/product.glb", scale: 0.8 },
-  { name: "Producto 5", description: "Slide adicional 5", model: "models/product.glb", scale: 0.8 },
-  { name: "Producto 5", description: "Slide adicional 5", model: "models/drone.glb", scale: 0.8 },
-  { name: "Producto 5", description: "Slide adicional 5", model: "models/mouth.glb", scale: 0.8 },
-  { name: "Producto 6", description: "Slide adicional 6", model: "models/product1.glb", scale: 0.8 }
+  { name: "Recon Drone", description: "Ojos en el cielo antes de que todo explote.", model: "models/drone.glb", scale: 0.8 },
+  { name: "Canister Táctico", description: "Carcasa de gunmetal cepillado, lista para la acción.", model: "models/product2.glb", scale: 0.8 },
+  { name: "Caja Blindada", description: "Almacenamiento reforzado para el resto del kit.", model: "models/product1.glb", scale: 1.1 },
+  { name: "Ojiva OneBlast", description: "Perfil aerodinámico, punta de impacto marcada.", procedural: "warhead", scale: 0.8 },
+  { name: "Mina de Impacto", description: "Núcleo con púas radiales, activación al contacto.", procedural: "spikemine", scale: 0.8 },
+  { name: "Detonador Remoto", description: "Botón rojo, antena lista, control total.", procedural: "detonator", scale: 0.8 }
 ];
 
 // Crear slides
@@ -148,6 +147,95 @@ carousel.addEventListener("touchend", ()=>{
 });
 
 /* =========================
+   MODELOS PROCEDURALES (sin GLB) — piezas propias del catálogo OneBlast
+========================= */
+function buildProceduralProduct(type){
+  const group = new THREE.Group();
+
+  if(type === "warhead"){
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x8a8f96 });
+    const tipMat  = new THREE.MeshStandardMaterial({ color:0xd21f1f });
+    const finMat  = new THREE.MeshStandardMaterial({ color:0x2b2e33 });
+
+    const nose = new THREE.Mesh(new THREE.ConeGeometry(0.42, 0.9, 32), tipMat);
+    nose.position.y = 0.95;
+    group.add(nose);
+
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.42, 1.5, 32), bodyMat);
+    group.add(body);
+
+    const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.42, 0.35, 32), bodyMat);
+    tail.position.y = -0.925;
+    group.add(tail);
+
+    const finGeo = new THREE.BoxGeometry(0.05, 0.55, 0.5);
+    for(let i=0;i<4;i++){
+      const fin = new THREE.Mesh(finGeo, finMat);
+      const angle = (i/4) * Math.PI*2;
+      fin.position.set(Math.cos(angle)*0.42, -1.05, Math.sin(angle)*0.42);
+      fin.rotation.y = angle;
+      group.add(fin);
+    }
+  }
+
+  if(type === "spikemine"){
+    const coreMat = new THREE.MeshStandardMaterial({ color:0x1c1f24 });
+    const spikeMat = new THREE.MeshStandardMaterial({ color:0xb3b8c0 });
+
+    const coreGeo = new THREE.IcosahedronGeometry(0.62, 0);
+    const core = new THREE.Mesh(coreGeo, coreMat);
+    group.add(core);
+
+    const posAttr = coreGeo.attributes.position;
+    const seen = new Set();
+    const spikeGeo = new THREE.ConeGeometry(0.09, 0.5, 12);
+
+    for(let i=0;i<posAttr.count;i++){
+      const v = new THREE.Vector3().fromBufferAttribute(posAttr, i);
+      const key = v.toArray().map(n=>n.toFixed(2)).join(",");
+      if(seen.has(key)) continue;
+      seen.add(key);
+
+      const spike = new THREE.Mesh(spikeGeo, spikeMat);
+      const dir = v.clone().normalize();
+      spike.position.copy(dir.clone().multiplyScalar(0.62 + 0.25));
+      spike.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), dir);
+      group.add(spike);
+    }
+  }
+
+  if(type === "detonator"){
+    const bodyMat = new THREE.MeshStandardMaterial({ color:0x2e2f33 });
+    const buttonMat = new THREE.MeshStandardMaterial({ color:0xe0201f });
+    const antennaMat = new THREE.MeshStandardMaterial({ color:0x9aa0a6 });
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.6, 0.35), bodyMat);
+    group.add(body);
+
+    const button = new THREE.Mesh(new THREE.SphereGeometry(0.22, 24, 16, 0, Math.PI*2, 0, Math.PI/2), buttonMat);
+    button.position.set(0.15, 0.3, 0);
+    group.add(button);
+
+    const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.06, 24), bodyMat);
+    cap.position.set(0.15, 0.3, 0);
+    group.add(cap);
+
+    const antenna = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.9, 10), antennaMat);
+    antenna.position.set(-0.4, 0.55, 0);
+    antenna.rotation.z = -0.35;
+    group.add(antenna);
+
+    for(let i=0;i<3;i++){
+      const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.06, 12), antennaMat);
+      btn.position.set(-0.25 + i*0.18, 0.31, 0);
+      group.add(btn);
+    }
+  }
+
+  return group;
+}
+
+/* =========================
    THREE.JS WEBGL POR SLIDE CON HDR REAL
 ========================= */
 const viewers = document.querySelectorAll(".product-viewer");
@@ -187,16 +275,26 @@ hdrLoader.load("textures/studio.hdr", texture=>{
     controls.enablePan=false;
     controls.enableDamping=true;
 
-    const loader = new THREE.GLTFLoader();
-    loader.load(products[i].model, gltf=>{
-      const model = gltf.scene;
+    if(products[i].procedural){
+      const model = buildProceduralProduct(products[i].procedural);
       model.scale.set(products[i].scale, products[i].scale, products[i].scale);
       model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
       scene.add(model);
       model.visible = (i===0);
       allModels[i]=model;
       viewer.querySelector(".loader").style.display="none";
-    });
+    } else {
+      const loader = new THREE.GLTFLoader();
+      loader.load(products[i].model, gltf=>{
+        const model = gltf.scene;
+        model.scale.set(products[i].scale, products[i].scale, products[i].scale);
+        model.traverse(c=>{ if(c.isMesh){ c.material.metalness=1; c.material.roughness=0.2; }});
+        scene.add(model);
+        model.visible = (i===0);
+        allModels[i]=model;
+        viewer.querySelector(".loader").style.display="none";
+      });
+    }
 
     allRenderers[i]=renderer;
     allScenes[i]=scene;
