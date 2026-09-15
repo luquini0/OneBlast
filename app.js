@@ -79,14 +79,26 @@ products.forEach((p,i)=>{
         ${p.badge ? `<span class="evo-badge">${p.badge}</span>` : ""}
         <h1>${p.name}</h1>
         <p>${p.description}</p>
-        <a href="https://mpago.la/11P89Mz" target="_blank" class="buy-button">Comprar ahora</a>
       </div>
       <div class="product-viewer">
+        <div class="viewer-hint">Drag to rotate</div>
         <div class="loader">Loading...</div>
+        <div class="viewer-swipe" aria-hidden="true">
+          <span class="chev left">&#8249;&#8249;</span>
+          <span class="chev right">&#8250;&#8250;</span>
+        </div>
+      </div>
+      <div class="product-actions">
+        <button class="animate-button" type="button"><span class="play-ico">&#9654;</span> Animate</button>
+        <a href="https://mpago.la/11P89Mz" target="_blank" class="buy-button">Comprar ahora</a>
       </div>
     </div>
   `;
   carousel.appendChild(section);
+  section.querySelector(".animate-button").addEventListener("click", (e)=>{
+    e.stopPropagation();
+    openLightbox(i);
+  });
 });
 
 const slides = document.querySelectorAll(".product-section");
@@ -202,7 +214,10 @@ function showModelForSlide(i){
   if(!viewer) return;
 
   if(viewerCanvas.parentElement !== viewer){
-    viewer.insertBefore(viewerCanvas, viewer.firstChild);
+    // Canvas belongs between the "drag to rotate" hint and the swipe strip
+    // (both static per-slide elements) — insert relative to the swipe
+    // strip rather than firstChild so it always lands in the middle.
+    viewer.insertBefore(viewerCanvas, viewer.querySelector(".viewer-swipe"));
   }
   resizeViewerTo(viewerCanvas);
 
@@ -278,6 +293,10 @@ const MAX_ANGLE = 6; // menos exagerado
 const DRAG_LIMIT = 140; // 🔥 mucho más control
 
 carousel.addEventListener("mousedown",e=>{
+  // Only the dedicated swipe strip starts a slide-change drag — dragging
+  // over the 3D model itself is drag-to-rotate (OrbitControls, on the
+  // shared canvas) and shouldn't also swipe the card underneath it.
+  if(!e.target.closest(".viewer-swipe")) return;
   isDragging=true;
   startX=e.clientX;
   deltaX=0;
@@ -310,6 +329,7 @@ window.addEventListener("mouseup",()=>{
 
 /* TOUCH */
 carousel.addEventListener("touchstart", e=>{
+  if(!e.target.closest(".viewer-swipe")) return;
   isDragging=true;
   startX=e.touches[0].clientX;
   deltaX=0;
@@ -921,3 +941,635 @@ function animateLogo(){
   logoRenderer.render(logoScene,logoCamera);
 }
 animateLogo();
+
+/* =========================================================
+   ANIMATE LIGHTBOX — per-product-family animation profiles
+   ---------------------------------------------------------
+   Each family gets its own tick(t) closure built once when the lightbox
+   opens (grabs bounds / caches child references / adds any VFX), then
+   called every frame. VFX (sprites, particle points, lights) are always
+   added as CHILDREN of the cloned model — never the scene directly — so
+   closing the lightbox and disposing the model tree cleans them up too,
+   with no separate bookkeeping needed.
+========================================================= */
+
+/* Shared soft glow texture (radial gradient), reused by every spark/
+   flame/muzzle-flash/ember effect below instead of loading image assets. */
+const GLOW_TEXTURE = (function(){
+  const size = 128;
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const gctx = c.getContext("2d");
+  const g = gctx.createRadialGradient(size/2,size/2,0, size/2,size/2,size/2);
+  g.addColorStop(0, "rgba(255,255,255,1)");
+  g.addColorStop(0.4, "rgba(255,255,255,0.6)");
+  g.addColorStop(1, "rgba(255,255,255,0)");
+  gctx.fillStyle = g;
+  gctx.fillRect(0,0,size,size);
+  return new THREE.CanvasTexture(c);
+})();
+
+function makeGlowSprite(color, size){
+  const mat = new THREE.SpriteMaterial({
+    map:GLOW_TEXTURE, color, transparent:true, depthWrite:false, blending:THREE.AdditiveBlending
+  });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(size,size,1);
+  return sprite;
+}
+
+function makeGlowParticles(count, spreadFn, color, size){
+  const positions = new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    const p = spreadFn(i);
+    positions[i*3]=p.x; positions[i*3+1]=p.y; positions[i*3+2]=p.z;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(positions,3));
+  const mat = new THREE.PointsMaterial({
+    map:GLOW_TEXTURE, color, size, transparent:true, depthWrite:false,
+    blending:THREE.AdditiveBlending, sizeAttenuation:true
+  });
+  return new THREE.Points(geo, mat);
+}
+
+function pulse(base, amp, speed, t, phase){
+  return base + amp * (0.5 + 0.5*Math.sin(t*speed + (phase||0)));
+}
+
+/* Each builder: (model, opts) => tick(t). Called once per lightbox open;
+   the returned tick runs every frame. `model` is always the lightbox's
+   own clone, safe to mutate freely without touching the card behind it. */
+const PROFILE_BUILDERS = {
+
+  /* ---- flagship: the bomb, fuse lit, tension building to a "blast" ---- */
+  fuseTension(model){
+    const box = new THREE.Box3().setFromObject(model);
+    const ember = makeGlowSprite(0xff6a1a, box.getSize(new THREE.Vector3()).length()*0.3);
+    ember.position.set(0, box.max.y, 0);
+    model.add(ember);
+    const light = new THREE.PointLight(0xff5500, 1.2, 5);
+    light.position.copy(ember.position);
+    model.add(light);
+
+    return function(t){
+      model.rotation.y = t*0.35;
+      const cyclePos = t % 4;
+      const tension = cyclePos > 3 ? (cyclePos-3) : 0;
+      model.rotation.z = Math.sin(t*50)*tension*0.06;
+      const flicker = pulse(0.75,0.25,9,t) * pulse(1,0.15,23,t,1.7);
+      ember.material.opacity = flicker;
+      light.intensity = 1.0 + flicker*1.8;
+    };
+  },
+
+  /* ---- unlabeled crates/canisters (real assets, unknown internals):
+     a sci-fi inspection scan sweeping the bounding box ---- */
+  scanReveal(model){
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const w = Math.max(size.x, size.z) * 1.2;
+    const bar = new THREE.Mesh(
+      new THREE.PlaneGeometry(w, Math.max(w*0.04,0.03)),
+      new THREE.MeshBasicMaterial({ color:0xff7a3a, transparent:true, opacity:0.55, side:THREE.DoubleSide, blending:THREE.AdditiveBlending })
+    );
+    bar.rotation.x = Math.PI/2;
+    model.add(bar);
+    const minY = box.min.y, span = size.y || 1;
+
+    return function(t){
+      model.rotation.y = t*0.3;
+      bar.position.y = minY + (0.5+0.5*Math.sin(t*1.3))*span;
+      bar.material.opacity = 0.3 + 0.3*Math.sin(t*2.6);
+    };
+  },
+
+  /* ---- flare: lit tip, rising embers ---- */
+  sparkIgnite(model){
+    const tip = model.children[2];
+    const spark = model.children[3];
+    const embers = makeGlowParticles(14, ()=>({
+      x:(Math.random()-0.5)*0.15, y:Math.random()*0.5, z:(Math.random()-0.5)*0.15
+    }), 0xff8a2a, 0.1);
+    embers.position.set(0, 1.15, 0);
+    model.add(embers);
+    const basePos = embers.geometry.attributes.position.array.slice();
+
+    return function(t){
+      model.rotation.y = t*0.4;
+      const flicker = pulse(0.6,0.4,14,t);
+      tip.material.emissiveIntensity = 0.5+flicker*0.6;
+      spark.material.emissiveIntensity = 0.6+flicker*0.8;
+      const pos = embers.geometry.attributes.position;
+      for(let i=0;i<pos.count;i++){
+        const rise = (t*0.6+i*0.13) % 1;
+        pos.setXYZ(i, basePos[i*3]+Math.sin(t*3+i)*0.02, rise*0.7, basePos[i*3+2]+Math.cos(t*3+i)*0.02);
+      }
+      pos.needsUpdate = true;
+    };
+  },
+
+  /* ---- detonator: button press, signal rings pulsing outward ---- */
+  buttonPress(model){
+    const button = model.children[1];
+    const baseY = button.position.y;
+    const ring = new THREE.Mesh(
+      new THREE.RingGeometry(0.05,0.08,24),
+      new THREE.MeshBasicMaterial({ color:0xff3b3b, transparent:true, opacity:0, side:THREE.DoubleSide })
+    );
+    ring.rotation.x = -Math.PI/2;
+    ring.position.copy(button.position);
+    ring.position.y += 0.02;
+    model.add(ring);
+
+    return function(t){
+      model.rotation.y = Math.sin(t*0.4)*0.5;
+      const cycle = t % 2;
+      const pressed = cycle < 0.15 ? cycle/0.15 : (cycle < 0.3 ? 1-(cycle-0.15)/0.15 : 0);
+      button.position.y = baseY - pressed*0.05;
+      const ringPhase = cycle/2;
+      ring.scale.setScalar(1+ringPhase*8);
+      ring.material.opacity = cycle < 0.5 ? Math.max(0,0.7*(1-ringPhase*2)) : 0;
+    };
+  },
+
+  /* ---- hand rocket: launches up on a loop, flame trailing ---- */
+  launchLoop(model){
+    const flame = makeGlowSprite(0xff8a2a, 0.5);
+    flame.position.set(0,-0.85,0);
+    model.add(flame);
+    const baseY = model.position.y;
+
+    return function(t){
+      const cycle = t % 3;
+      const launch = cycle < 2.4 ? Math.pow(cycle/2.4, 2) : 1 - (cycle-2.4)/0.6;
+      model.position.y = baseY + launch*3.2;
+      model.rotation.y = t*0.6;
+      const flameOn = cycle < 2.4;
+      flame.material.opacity = flameOn ? 0.6+0.4*Math.sin(t*20) : 0;
+      flame.scale.setScalar(0.35+0.25*Math.sin(t*20));
+    };
+  },
+
+  /* ---- hazard barrel: rumbling, strobing warning light ---- */
+  hazardRumble(model){
+    const light = new THREE.PointLight(0xff2200, 0, 3);
+    light.position.set(0,0.8,0.8);
+    model.add(light);
+
+    return function(t){
+      model.rotation.y = t*0.2;
+      model.position.x = Math.sin(t*45)*0.015;
+      model.position.z = Math.cos(t*37)*0.015;
+      light.intensity = (Math.sin(t*6) > 0.3 ? 1 : 0) * 2.5;
+    };
+  },
+
+  /* ---- C4 block: blinking countdown timer ---- */
+  timerBlink(model){
+    const timer = model.children[1];
+
+    return function(t){
+      model.rotation.y = Math.sin(t*0.3)*0.4;
+      const blink = Math.sin(t*4) > 0 ? 1 : 0.15;
+      timer.material.emissiveIntensity = blink*1.1;
+      model.position.x = blink>0.5 ? Math.sin(t*80)*0.006 : 0;
+    };
+  },
+
+  /* ---- warhead: fast spin in flight, speed-line trail ---- */
+  spinFlight(model){
+    const trail = makeGlowParticles(16, (i)=>({x:0,y:-0.9-i*0.1,z:0}), 0xaad4ff, 0.06);
+    model.add(trail);
+    const basePos = trail.geometry.attributes.position.array.slice();
+
+    return function(t){
+      model.rotation.y = t*6;
+      const pos = trail.geometry.attributes.position;
+      for(let i=0;i<pos.count;i++){
+        pos.setY(i, basePos[i*3+1] - (t*1.5+i*0.1)%1.6);
+      }
+      pos.needsUpdate = true;
+      trail.material.opacity = 0.5;
+    };
+  },
+
+  /* ---- grenades: lever flips, pin slides out, then resets ---- */
+  pinPull(model, opts){
+    const pinRing = model.children[6];
+    const lever = model.children[7];
+    const basePinPos = pinRing.position.clone();
+    const baseLeverRot = lever.rotation.z;
+    const core = opts.glow ? model.children[8] : null;
+
+    return function(t){
+      model.rotation.y = t*0.3;
+      const cycle = t % 3;
+      const pull = Math.min(cycle/1.2, 1);
+      pinRing.position.x = basePinPos.x + pull*0.6;
+      pinRing.position.y = basePinPos.y + pull*0.3;
+      lever.rotation.z = baseLeverRot + (cycle>1.2 ? Math.min((cycle-1.2)/0.4,1) : 0) * 1.1;
+      if(core) core.material.emissiveIntensity = 0.6 + 0.5*Math.sin(t*10);
+      model.position.x = cycle>1.6 ? Math.sin(t*40)*0.02 : 0;
+    };
+  },
+
+  /* ---- impact mine: spikes pulse outward radially ---- */
+  spikesPulse(model){
+    const core = model.children[0];
+    core.material.emissive = new THREE.Color(0xff2222);
+    const spikes = model.children.slice(1);
+    spikes.forEach(s=>{
+      s.userData.dir = s.position.clone().normalize();
+      s.userData.baseDist = s.position.length();
+    });
+
+    return function(t){
+      model.rotation.y = t*0.25;
+      const pulseAmt = 0.06*Math.sin(t*2);
+      spikes.forEach(s=>{
+        s.position.copy(s.userData.dir.clone().multiplyScalar(s.userData.baseDist + pulseAmt));
+      });
+      core.material.emissiveIntensity = 0.3+0.2*Math.sin(t*2);
+    };
+  },
+
+  /* ---- launchers: recoil kick + muzzle flash ---- */
+  recoilFlash(model, opts){
+    const flash = makeGlowSprite(0xffb066, 0.45);
+    flash.position.set(0.95,0,0);
+    model.add(flash);
+    const lens = opts.glow ? model.children[5] : null;
+    const baseX = model.position.x;
+
+    return function(t){
+      model.rotation.y = Math.sin(t*0.3)*0.3;
+      const cycle = t % 1.4;
+      const firing = cycle < 0.08;
+      flash.material.opacity = firing ? 1 : 0;
+      flash.scale.setScalar(firing ? 0.5+Math.random()*0.2 : 0.1);
+      model.position.x = baseX - (firing ? 0.08*(1-cycle/0.08) : 0);
+      if(lens) lens.material.emissiveIntensity = 0.6+0.4*Math.sin(t*6);
+    };
+  },
+
+  /* ---- plasma core: rings spinning at different speeds, core breathing ---- */
+  energyRings(model){
+    const core = model.children[0];
+    const ringA = model.children[1];
+    const ringB = model.children[2];
+
+    return function(t){
+      ringA.rotation.z = t*1.2;
+      ringB.rotation.z = -t*0.8;
+      core.scale.setScalar(1+0.08*Math.sin(t*2));
+      core.material.emissiveIntensity = 0.7+0.4*Math.sin(t*2);
+      model.rotation.y = t*0.2;
+    };
+  },
+
+  /* ---- pulse guns: muzzle charging glow + recoil ---- */
+  chargeGlow(model, opts){
+    const glow = makeGlowSprite(opts.heavy?0xff5500:0xffb066, opts.heavy?0.5:0.35);
+    glow.position.set(opts.heavy?0.85:0.82, 0.02, 0);
+    model.add(glow);
+    const coreBeam = opts.heavy ? model.children[3] : null;
+    const coils = opts.heavy ? [model.children[4], model.children[5], model.children[6]] : [];
+
+    return function(t){
+      model.rotation.y = Math.sin(t*0.35)*0.5;
+      const charge = pulse(0.5,0.5,3,t);
+      glow.material.opacity = charge;
+      glow.scale.setScalar((opts.heavy?0.5:0.35) * (0.8+0.4*charge));
+      if(coreBeam) coreBeam.material.emissiveIntensity = 0.6+charge*1.2;
+      coils.forEach((c,i)=>{ c.rotation.x += 0.05*(i%2===0?1:-1); });
+      model.position.x = -(Math.max(0, Math.sin(t*3))**6) * 0.05;
+    };
+  },
+
+  /* ---- micro-drones: rotors spin, body hovers ---- */
+  rotorHover(model, opts){
+    const discIdx = opts.eye ? [3,6,9,12] : [2,4,6,8];
+    const discs = discIdx.map(i=>model.children[i]);
+    const eye = opts.eye ? model.children[1] : null;
+    const thrusters = opts.eye ? [4,7,10,13].map(i=>model.children[i]) : [];
+
+    return function(t){
+      discs.forEach(d=>{ d.rotation.y += 0.9; });
+      model.position.y = Math.sin(t*2.2)*0.08;
+      model.rotation.y = Math.sin(t*0.4)*0.3 + t*0.05;
+      if(eye) eye.material.emissiveIntensity = 0.6+0.5*Math.sin(t*4);
+      thrusters.forEach((th,i)=>{ th.material.emissiveIntensity = 0.5+0.4*Math.sin(t*5+i); });
+    };
+  },
+
+  /* ---- armor plates: slow presentation spin ---- */
+  presentationSpin(model, opts){
+    const core = opts.core ? model.children[2] : null;
+
+    return function(t){
+      model.rotation.y = t*0.4;
+      model.position.y = Math.sin(t*1.5)*0.06;
+      if(core) core.material.emissiveIntensity = 0.6+0.5*Math.sin(t*3);
+    };
+  },
+
+  /* ---- containment core: rings + core + orbiting motes ---- */
+  containmentOrbit(model){
+    const rings = [model.children[1], model.children[2], model.children[3]];
+    const core = model.children[4];
+    const motes = model.children.slice(5);
+    motes.forEach(m=>{
+      m.userData.radius = Math.hypot(m.position.x, m.position.z);
+      m.userData.angle = Math.atan2(m.position.z, m.position.x);
+      m.userData.baseY = m.position.y;
+    });
+
+    return function(t){
+      rings[0].rotation.z = t*0.5;
+      rings[1].rotation.z = -t*0.35;
+      rings[2].rotation.z = t*0.65;
+      core.rotation.y = t*0.8;
+      core.material.emissiveIntensity = 0.8+0.4*Math.sin(t*3);
+      motes.forEach((m,i)=>{
+        const a = m.userData.angle + t*0.4;
+        m.position.x = Math.cos(a)*m.userData.radius;
+        m.position.z = Math.sin(a)*m.userData.radius;
+        m.position.y = m.userData.baseY + Math.sin(t*1.5+i)*0.05;
+      });
+    };
+  },
+
+  /* ---- recon drone (real asset): hover bob + dust ---- */
+  hoverBob(model){
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const dust = makeGlowParticles(14, ()=>({
+      x:(Math.random()-0.5)*size.x*1.6,
+      y:box.min.y + Math.random()*0.2,
+      z:(Math.random()-0.5)*size.z*1.6
+    }), 0xffd27a, 0.08);
+    model.add(dust);
+    const basePos = dust.geometry.attributes.position.array.slice();
+
+    return function(t){
+      model.position.y = Math.sin(t*1.8)*0.12;
+      model.rotation.y = Math.sin(t*0.5)*0.25 + t*0.1;
+      model.rotation.z = Math.sin(t*2.4)*0.03;
+      const pos = dust.geometry.attributes.position;
+      for(let i=0;i<pos.count;i++){
+        pos.setY(i, basePos[i*3+1] + Math.sin(t*3+i)*0.03);
+      }
+      pos.needsUpdate = true;
+    };
+  },
+
+  /* ---- combat ship (real asset): flight bank + engine glow ---- */
+  flightBank(model){
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const glow = makeGlowSprite(0x66d9ff, size.length()*0.25);
+    glow.position.set(0,0, box.min.z);
+    model.add(glow);
+
+    return function(t){
+      model.rotation.z = Math.sin(t*0.6)*0.35;
+      model.rotation.x = Math.sin(t*0.4)*0.12 + 0.05;
+      model.rotation.y = t*0.15;
+      model.position.y = Math.sin(t*0.8)*0.15;
+      glow.material.opacity = 0.5 + 0.4*Math.sin(t*10);
+    };
+  },
+
+  /* ---- mech / warrior (real assets): idle sway + glowing aura clone ---- */
+  idleAura(model){
+    const auraGroup = new THREE.Group();
+    // Real GLB assets can nest meshes several levels deep (bone/rig
+    // groups), so a mesh's own local position/rotation isn't enough to
+    // place its aura copy correctly — compute the transform relative to
+    // `model` via world matrices instead, which works at any nesting depth.
+    model.updateMatrixWorld(true);
+    const modelWorldInverse = new THREE.Matrix4().copy(model.matrixWorld).invert();
+    model.traverse(c=>{
+      if(c.isMesh){
+        const auraMesh = new THREE.Mesh(c.geometry, new THREE.MeshBasicMaterial({
+          color:0xff5a2a, wireframe:true, transparent:true, opacity:0.3
+        }));
+        const relMatrix = new THREE.Matrix4().multiplyMatrices(modelWorldInverse, c.matrixWorld);
+        const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+        relMatrix.decompose(pos, quat, scl);
+        auraMesh.position.copy(pos);
+        auraMesh.quaternion.copy(quat);
+        auraMesh.scale.copy(scl).multiplyScalar(1.04);
+        auraGroup.add(auraMesh);
+      }
+    });
+    model.add(auraGroup);
+
+    return function(t){
+      model.rotation.y = Math.sin(t*0.3)*0.15;
+      model.position.y = Math.sin(t*1.2)*0.05;
+      const pulseAmt = 0.3 + 0.15*Math.sin(t*2.4);
+      auraGroup.children.forEach(m=>{ m.material.opacity = pulseAmt; });
+    };
+  },
+
+  /* ---- astronaut (real asset): slow zero-gravity tumble/drift ---- */
+  zeroGFloat(model){
+    return function(t){
+      model.rotation.x = Math.sin(t*0.3)*0.3;
+      model.rotation.y = t*0.25;
+      model.rotation.z = Math.cos(t*0.22)*0.2;
+      model.position.x = Math.sin(t*0.4)*0.2;
+      model.position.y = Math.sin(t*0.6)*0.15;
+    };
+  },
+
+  /* ---- tank (real asset): idling rumble + dust ---- */
+  driveRumble(model){
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const dust = makeGlowParticles(10, ()=>({
+      x:(Math.random()-0.5)*size.x,
+      y:box.min.y,
+      z:(Math.random()-0.5)*size.z
+    }), 0x9a8a6a, 0.1);
+    model.add(dust);
+
+    return function(t){
+      model.rotation.y = Math.sin(t*0.35)*0.1;
+      model.position.x = Math.sin(t*40)*0.01;
+      model.position.z = Math.sin(t*0.9)*0.05;
+      dust.material.opacity = 0.35 + 0.25*Math.sin(t*3);
+    };
+  }
+};
+
+/* procedural-type -> [builder name, opts] */
+const PROFILE_BY_KEY = {
+  flare: ["sparkIgnite"],
+  detonator: ["buttonPress"],
+  rocket: ["launchLoop"],
+  hazardbarrel: ["hazardRumble"],
+  c4block: ["timerBlink"],
+  warhead: ["spinFlight"],
+  grenade: ["pinPull", {glow:false}],
+  grenade2: ["pinPull", {glow:true}],
+  spikemine: ["spikesPulse"],
+  launcher: ["recoilFlash", {glow:false}],
+  launcher2: ["recoilFlash", {glow:true}],
+  plasmacore: ["energyRings"],
+  pulsegun: ["chargeGlow", {heavy:false}],
+  pulsegun2: ["chargeGlow", {heavy:true}],
+  microdrone: ["rotorHover", {eye:false}],
+  microdrone2: ["rotorHover", {eye:true}],
+  armorplate: ["presentationSpin", {core:false}],
+  armorplate2: ["presentationSpin", {core:true}],
+  containment: ["containmentOrbit"]
+};
+
+/* real .glb asset path -> [builder name, opts] */
+const GLB_PROFILE_BY_NAME = {
+  "models/bomba.glb": ["fuseTension"],
+  "models/product1.glb": ["scanReveal"],
+  "models/product2.glb": ["scanReveal"],
+  "models/drone.glb": ["hoverBob"],
+  "models/spaceship.glb": ["flightBank"],
+  "models/mech.glb": ["idleAura"],
+  "models/warrior.glb": ["idleAura"],
+  "models/astronaut.glb": ["zeroGFloat"],
+  "models/tank.glb": ["driveRumble"]
+};
+
+function buildAnimationTick(product, model){
+  const entry = product.procedural
+    ? PROFILE_BY_KEY[product.procedural]
+    : GLB_PROFILE_BY_NAME[product.model];
+  const [name, opts] = entry || ["presentationSpin", {core:false}];
+  return PROFILE_BUILDERS[name](model, opts || {});
+}
+
+function cloneForLightbox(source){
+  const clone = source.clone(true);
+  clone.traverse(c=>{
+    if(c.material){
+      c.material = Array.isArray(c.material) ? c.material.map(m=>m.clone()) : c.material.clone();
+    }
+  });
+  return clone;
+}
+
+function disposeObjectTree(obj){
+  obj.traverse(c=>{
+    if(c.geometry) c.geometry.dispose();
+    if(c.material){
+      const mats = Array.isArray(c.material) ? c.material : [c.material];
+      mats.forEach(m=>{
+        // GLOW_TEXTURE is shared across every open of the lightbox — never
+        // dispose it here, only per-clone materials/geometries.
+        if(m.map && m.map !== GLOW_TEXTURE) m.map.dispose();
+        m.dispose();
+      });
+    }
+  });
+}
+
+/* ---- lightbox scene/renderer (separate from the card viewer so the
+   automatic animation and the card's own OrbitControls never fight) ---- */
+const lightbox = document.getElementById("lightbox");
+const lightboxCanvas = document.getElementById("lightboxCanvas");
+const lightboxClose = document.getElementById("lightboxClose");
+const lightboxCaption = document.getElementById("lightboxCaption");
+
+const lbRenderer = new THREE.WebGLRenderer({ canvas:lightboxCanvas, alpha:true, antialias:true });
+lbRenderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+lbRenderer.outputEncoding = THREE.sRGBEncoding;
+lbRenderer.physicallyCorrectLights = true;
+lbRenderer.toneMapping = THREE.ACESFilmicToneMapping;
+lbRenderer.toneMappingExposure = 1.6;
+
+const lbScene = new THREE.Scene();
+const lbCamera = new THREE.PerspectiveCamera(45,1,0.1,100);
+lbCamera.position.set(0,0,5);
+
+lbScene.add(new THREE.AmbientLight(0xffffff,0.5));
+const lbDir = new THREE.DirectionalLight(0xffffff,2);
+lbDir.position.set(3,3,3);
+lbScene.add(lbDir);
+
+const lbControls = new THREE.OrbitControls(lbCamera, lbRenderer.domElement);
+lbControls.enableZoom = true;
+lbControls.enablePan = false;
+lbControls.enableDamping = true;
+
+let lbModel = null;
+let lbTick = null;
+let lbClock = null;
+let lbRAFId = null;
+let lbPollId = null;
+let lbCurrentIndex = -1;
+
+function resizeLightbox(){
+  const w = lightboxCanvas.clientWidth || 1;
+  const h = lightboxCanvas.clientHeight || 1;
+  lbCamera.aspect = w/h;
+  lbCamera.updateProjectionMatrix();
+  lbRenderer.setSize(w,h,false);
+}
+
+function populateLightboxModel(index){
+  const product = products[index];
+  const source = modelCache[index];
+  if(!source){
+    // modelCache[index] is `undefined` until a load has ever been kicked
+    // off for this index, then `null` while that load is in flight — only
+    // start one ourselves if nothing (card or lightbox) already has.
+    if(modelCache[index] === undefined) getOrBuildModel(index);
+    lbPollId = setTimeout(()=>{ if(lbCurrentIndex===index) populateLightboxModel(index); }, 150);
+    return;
+  }
+  if(lbModel){ lbScene.remove(lbModel); disposeObjectTree(lbModel); }
+  lbModel = cloneForLightbox(source);
+  lbScene.add(lbModel);
+  lbTick = buildAnimationTick(product, lbModel);
+  lbClock = new THREE.Clock();
+}
+
+function openLightbox(index){
+  lbCurrentIndex = index;
+  lightboxCaption.textContent = products[index].name;
+  lbScene.environment = viewerScene.environment;
+
+  lightbox.classList.add("open");
+  lightbox.setAttribute("aria-hidden","false");
+  resizeLightbox();
+
+  if(lbPollId){ clearTimeout(lbPollId); lbPollId=null; }
+  populateLightboxModel(index);
+
+  if(lbRAFId){ cancelAnimationFrame(lbRAFId); }
+  (function loop(){
+    lbRAFId = requestAnimationFrame(loop);
+    const t = lbClock ? lbClock.getElapsedTime() : 0;
+    if(lbTick) lbTick(t);
+    lbControls.update();
+    lbRenderer.render(lbScene, lbCamera);
+  })();
+}
+
+function closeLightbox(){
+  lightbox.classList.remove("open");
+  lightbox.setAttribute("aria-hidden","true");
+
+  if(lbRAFId){ cancelAnimationFrame(lbRAFId); lbRAFId=null; }
+  if(lbPollId){ clearTimeout(lbPollId); lbPollId=null; }
+  lbCurrentIndex = -1;
+  lbTick = null;
+
+  if(lbModel){ lbScene.remove(lbModel); disposeObjectTree(lbModel); lbModel=null; }
+}
+
+lightboxClose.addEventListener("click", closeLightbox);
+lightbox.addEventListener("click", e=>{ if(e.target === lightbox) closeLightbox(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && lightbox.classList.contains("open")) closeLightbox(); });
+window.addEventListener("resize", ()=>{ if(lightbox.classList.contains("open")) resizeLightbox(); });

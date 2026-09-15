@@ -71,6 +71,16 @@
   <div class="arrow next"><span>&#10095;</span></div>
 </div>
 
+<!-- Animate lightbox: opened per-product by the Animate button, shows a
+     bigger view with a category-specific animation loop (see app.js). -->
+<div class="lightbox" id="lightbox" aria-hidden="true">
+  <div class="lightbox-inner">
+    <button class="lightbox-close" id="lightboxClose" aria-label="Close">&times;</button>
+    <canvas class="lightbox-canvas" id="lightboxCanvas"></canvas>
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
+</div>
+
 <footer class="site-footer">ONEBLAST &middot; drag or swipe to explore</footer>
 
 <script src="app.js"></script>
