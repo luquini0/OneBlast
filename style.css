@@ -496,24 +496,16 @@ body{
     transform:translate(-15%,-50%) scale(0.7) rotateY(-15deg);
   }
 
+}
+
+/* Touch devices (phones, tablets): no arrows — the carousel already
+   supports swipe (see touchstart/touchmove/touchend in app.js), and the
+   arrow hit-zones only got in the way of dragging/swiping on a touch
+   screen. Keeps arrows for anything with a real pointer (mouse/trackpad),
+   regardless of screen width. */
+@media (hover:none) and (pointer:coarse){
   .arrow{
-    width:64px;
-    padding:0;
-    justify-content:center;
-  }
-
-  .arrow.prev{
-    left:4px;
-  }
-
-  .arrow.next{
-    right:4px;
-  }
-
-  .arrow span{
-    width:46px;
-    height:46px;
-    font-size:18px;
+    display:none;
   }
 }
 
