@@ -158,11 +158,6 @@ viewerControls.enableZoom=false;
 viewerControls.enablePan=false;
 viewerControls.enableDamping=true;
 viewerControls.rotateSpeed=0.8;
-// Mouse drag-to-rotate stays exactly as-is (OrbitControls handles it).
-// Touch is handled by a separate hold-to-arm rotator further down instead
-// (see TOUCH DRAG-TO-ROTATE) — disable OrbitControls' own single-touch
-// mapping so the two never fight over the same gesture.
-viewerControls.touches.ONE = -1;
 
 const modelCache = {};
 let activeModel = null;
@@ -173,16 +168,24 @@ let viewerReady = false;
    ---------------------------------------------------------
    An immediate touch-drag kept getting interrupted (something else on
    the page claiming the gesture before OrbitControls could), so instead
-   of an instant drag, a finger has to hold still on the model for a
+   of an instant drag, a finger has to stay down on the model for a
    moment first. Once armed, dragging spins the model directly — mouse
    drag on desktop is untouched (still OrbitControls, immediate).
+
+   IMPORTANT: arming only depends on keeping contact for TOUCH_HOLD_MS —
+   movement during that window does NOT cancel it. An earlier version
+   cancelled the hold if the finger drifted more than a few px, but real
+   fingers never stay perfectly still (and a user who instinctively
+   starts dragging right away will drift well past a few px in the very
+   first touchmove), so that check was quietly defeating the whole
+   feature — every real attempt got cancelled before the timer could
+   ever finish. Movement just updates the reference point so there's no
+   jump the moment it arms.
 ========================================================= */
 const TOUCH_HOLD_MS = 3000;
-const TOUCH_CANCEL_DIST = 14; // px of drift during the hold that cancels it
 
 let touchHoldTimer = null;
 let touchArmed = false;
-let touchStartPt = null;
 let touchLastPt = null;
 
 function resetTouchRotate(){
@@ -199,7 +202,6 @@ function armTouchRotate(){
 
 viewerCanvas.addEventListener("touchstart", e=>{
   const touch = e.touches[0];
-  touchStartPt = { x:touch.clientX, y:touch.clientY };
   touchLastPt = { x:touch.clientX, y:touch.clientY };
   resetTouchRotate();
   viewerCanvas.classList.add("rotate-charging");
@@ -210,10 +212,9 @@ viewerCanvas.addEventListener("touchmove", e=>{
   const touch = e.touches[0];
 
   if(!touchArmed){
-    // Still holding still to arm it — enough drift means the finger
-    // wanted to do something else, so bail out instead of rotating.
-    const dist = Math.hypot(touch.clientX-touchStartPt.x, touch.clientY-touchStartPt.y);
-    if(dist > TOUCH_CANCEL_DIST) resetTouchRotate();
+    // Not armed yet — just keep the reference point current so there's
+    // no jump once it arms; the finger is free to move around meanwhile.
+    touchLastPt = { x:touch.clientX, y:touch.clientY };
     return;
   }
 
@@ -230,6 +231,18 @@ viewerCanvas.addEventListener("touchmove", e=>{
 
 viewerCanvas.addEventListener("touchend", resetTouchRotate);
 viewerCanvas.addEventListener("touchcancel", resetTouchRotate);
+
+/* Fully hand touch on the canvas to the rotator above — disabling
+   OrbitControls itself (not just its touches.ONE mapping) in the
+   CAPTURING phase on a shared ancestor guarantees this runs before
+   OrbitControls' own touchstart handler ever sees the event, regardless
+   of registration order. Mouse is untouched (enabled flips back to true
+   on touchend/touchcancel, ready for the next interaction either way). */
+document.addEventListener("touchstart", e=>{
+  if(e.target.closest && e.target.closest(".webgl-canvas")) viewerControls.enabled = false;
+}, { capture:true, passive:true });
+document.addEventListener("touchend", ()=>{ viewerControls.enabled = true; }, { capture:true, passive:true });
+document.addEventListener("touchcancel", ()=>{ viewerControls.enabled = true; }, { capture:true, passive:true });
 
 function resizeViewerTo(canvas){
   const width = canvas.clientWidth || 1;
