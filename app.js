@@ -81,10 +81,7 @@ products.forEach((p,i)=>{
         <p>${p.description}</p>
       </div>
       <div class="product-viewer">
-        <div class="viewer-hint">
-          <span class="only-desktop">Drag to rotate</span>
-          <span class="only-touch">Hold &amp; drag to rotate</span>
-        </div>
+        <div class="viewer-hint">Drag to rotate</div>
         <div class="loader">Loading...</div>
       </div>
       <div class="product-actions">
@@ -158,18 +155,9 @@ viewerControls.enableZoom=false;
 viewerControls.enablePan=false;
 viewerControls.enableDamping=true;
 viewerControls.rotateSpeed=0.8;
-
-/* Touch rotate-to-hold lives down by the swipe handling (see TOUCH: HOLD
-   TO ROTATE, OR SWIPE below) since the two gestures now share one state
-   machine. This just keeps OrbitControls itself from ever seeing touch on
-   the canvas — disabling it in the CAPTURING phase on a shared ancestor
-   guarantees this runs before OrbitControls' own touchstart handler,
-   regardless of registration order. Mouse is untouched. */
-document.addEventListener("touchstart", e=>{
-  if(e.target.closest && e.target.closest(".product-viewer")) viewerControls.enabled = false;
-}, { capture:true, passive:true });
-document.addEventListener("touchend", ()=>{ viewerControls.enabled = true; }, { capture:true, passive:true });
-document.addEventListener("touchcancel", ()=>{ viewerControls.enabled = true; }, { capture:true, passive:true });
+// Single-finger touch rotates by default (touches.ONE = ROTATE), so the
+// same OrbitControls instance drives rotate-to-drag on mouse AND touch —
+// no separate gesture/state machine needed for either input.
 
 const modelCache = {};
 let activeModel = null;
@@ -359,95 +347,36 @@ window.addEventListener("mouseup",()=>{
 });
 
 /* =========================================================
-   TOUCH: HOLD TO ROTATE, OR SWIPE
+   TOUCH: SWIPE TO NAVIGATE
    ---------------------------------------------------------
-   Touch shares one gesture with the model and the rest of the card:
-   starting over the viewer (model + its hint) holds a 1s countdown — if
-   the finger stays down that long, rotate arms and the drag spins the
-   model instead of swiping. But if the finger moves enough before that
-   timer fires, it clearly wasn't meant as a hold, so the countdown is
-   dropped and the SAME gesture just becomes a normal swipe, exactly like
-   starting anywhere else on the card. Nothing needs to be re-triggered
-   for that handoff — deltaX/the tilt preview were already tracking from
-   touchstart, arming is just deferred while there's a chance it's a hold.
+   Same split as mouse: starting over the viewer (model + its hint) is
+   drag-to-rotate, handled entirely by OrbitControls on the canvas itself
+   (see viewerControls above) — this handler ignores that gesture
+   completely instead of racing it. Starting anywhere else on the card is
+   a swipe, exactly like the mousedown/mousemove/mouseup flow below.
 ========================================================= */
-const ROTATE_HOLD_MS = 1000;
-const ROTATE_HOLD_CANCEL_DIST = 12; // px of drag before the hold that means "swipe, not hold"
-
-let rotateHoldTimer = null;
-let rotateArmed = false;
-let rotateOverViewer = false;
-let rotateLastPt = null;
-
-function clearRotateHold(){
-  if(rotateHoldTimer){ clearTimeout(rotateHoldTimer); rotateHoldTimer = null; }
-  rotateArmed = false;
-  viewerCanvas.classList.remove("rotate-charging","rotate-armed");
-}
-
 carousel.addEventListener("touchstart", e=>{
+  if(e.target.closest(".product-viewer")) return; // rotate: OrbitControls owns this gesture
   const touch = e.touches[0];
   isDragging=true;
   startX=touch.clientX;
   deltaX=0;
-
-  clearRotateHold();
-  rotateOverViewer = !!e.target.closest(".product-viewer");
-  if(rotateOverViewer){
-    rotateLastPt = { x:touch.clientX, y:touch.clientY };
-    viewerCanvas.classList.add("rotate-charging");
-    rotateHoldTimer = setTimeout(()=>{
-      rotateArmed = true;
-      isDragging = false; // this gesture is rotate-only now, not a swipe
-      viewerCanvas.classList.remove("rotate-charging");
-      viewerCanvas.classList.add("rotate-armed");
-    }, ROTATE_HOLD_MS);
-  }
 }, { passive:true });
 
 carousel.addEventListener("touchmove", e=>{
-  const touch = e.touches[0];
-
-  if(rotateArmed){
-    e.preventDefault();
-    const dx = touch.clientX - rotateLastPt.x;
-    const dy = touch.clientY - rotateLastPt.y;
-    rotateLastPt = { x:touch.clientX, y:touch.clientY };
-    if(activeModel){
-      activeModel.rotation.y += dx * 0.01;
-      activeModel.rotation.x = Math.max(-0.6, Math.min(0.6, activeModel.rotation.x + dy*0.01));
-    }
-    return;
-  }
-
   if(!isDragging) return;
 
+  const touch = e.touches[0];
   deltaX=touch.clientX-startX;
-
-  if(rotateOverViewer){
-    // Keep this current in case the hold still arms — otherwise rotation
-    // would jump using an up-to-a-second-stale reference point the
-    // instant it does.
-    rotateLastPt = { x:touch.clientX, y:touch.clientY };
-    // Dragging away while still waiting to arm means this was a swipe
-    // all along — drop the pending hold so it doesn't arm out from
-    // under it.
-    if(rotateHoldTimer && Math.abs(deltaX) > ROTATE_HOLD_CANCEL_DIST){
-      clearRotateHold();
-    }
-  }
 
   const clamped = Math.max(-DRAG_LIMIT, Math.min(DRAG_LIMIT, deltaX));
   const angle = (clamped / DRAG_LIMIT) * MAX_ANGLE;
 
   slides[current].style.transform = `translate(-50%,-50%) rotateY(${angle}deg)`;
-}, { passive:false });
+}, { passive:true });
 
 carousel.addEventListener("touchend", ()=>{
-  clearRotateHold();
-  rotateOverViewer = false;
-
-  if(!isDragging) return; // was rotating — nothing to swipe-finalize
+  if(!isDragging) return;
   isDragging=false;
 
   if(deltaX > DRAG_LIMIT/2) goPrev();
