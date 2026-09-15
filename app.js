@@ -83,7 +83,6 @@ products.forEach((p,i)=>{
       <div class="product-viewer">
         <div class="viewer-hint">Drag to rotate</div>
         <div class="loader">Loading...</div>
-        <div class="viewer-swipe" aria-hidden="true"></div>
       </div>
       <div class="product-actions">
         <button class="animate-button" type="button"><span class="play-ico">&#9654;</span> Animate</button>
@@ -155,6 +154,11 @@ const viewerControls = new THREE.OrbitControls(viewerCamera, viewerRenderer.domE
 viewerControls.enableZoom=false;
 viewerControls.enablePan=false;
 viewerControls.enableDamping=true;
+viewerControls.rotateSpeed=0.8;
+// Explicit, since the default touch mapping only holds while nothing else
+// on the page has already claimed the gesture — pin single-finger touch
+// to rotate (matches the mouse drag) regardless.
+viewerControls.touches.ONE = THREE.TOUCH.ROTATE;
 
 const modelCache = {};
 let activeModel = null;
@@ -225,12 +229,16 @@ function showModelForSlide(i){
   if(!viewer) return;
 
   if(viewerCanvas.parentElement !== viewer){
-    // Canvas belongs between the "drag to rotate" hint and the swipe strip
-    // (both static per-slide elements) — insert relative to the swipe
-    // strip rather than firstChild so it always lands in the middle.
-    viewer.insertBefore(viewerCanvas, viewer.querySelector(".viewer-swipe"));
+    // Goes after the "drag to rotate" hint (the .loader is absolutely
+    // positioned, so it doesn't matter where it sits in flow).
+    viewer.appendChild(viewerCanvas);
   }
   resizeViewerTo(viewerCanvas);
+  // A second resize next frame corrects for any layout that hasn't fully
+  // settled yet on the first paint (e.g. the hint's height shifting once
+  // the web font swaps in) — on mobile a wrong initial canvas size made
+  // OrbitControls' touch-drag rotation feel broken/oversensitive.
+  requestAnimationFrame(()=> resizeViewerTo(viewerCanvas));
 
   if(activeModel) viewerScene.remove(activeModel);
 
@@ -305,10 +313,10 @@ const MAX_ANGLE = 6; // menos exagerado
 const DRAG_LIMIT = 140; // 🔥 mucho más control
 
 carousel.addEventListener("mousedown",e=>{
-  // Only the dedicated swipe strip starts a slide-change drag — dragging
-  // over the 3D model itself is drag-to-rotate (OrbitControls, on the
-  // shared canvas) and shouldn't also swipe the card underneath it.
-  if(!e.target.closest(".viewer-swipe")) return;
+  // Swiping works over the whole card, EXCEPT the model itself — dragging
+  // the canvas is drag-to-rotate (OrbitControls owns it exclusively) and
+  // shouldn't also swipe the card underneath it.
+  if(e.target.closest(".webgl-canvas")) return;
   isDragging=true;
   startX=e.clientX;
   deltaX=0;
@@ -341,7 +349,7 @@ window.addEventListener("mouseup",()=>{
 
 /* TOUCH */
 carousel.addEventListener("touchstart", e=>{
-  if(!e.target.closest(".viewer-swipe")) return;
+  if(e.target.closest(".webgl-canvas")) return;
   isDragging=true;
   startX=e.touches[0].clientX;
   deltaX=0;
