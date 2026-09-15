@@ -469,15 +469,11 @@ body{
   pointer-events:none;
 }
 
-/* SWIPE STRIP — below the model, dedicated hit-zone for changing products.
-   Bouncing chevrons hint that this strip (not the model) is what swipes. */
+/* SWIPE STRIP — below the model, dedicated hit-zone for changing products
+   (the pagination dots below the card are what show it's swipeable). */
 .viewer-swipe{
   flex:0 0 auto;
   height:44px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 26px;
   cursor:grab;
   user-select:none;
   touch-action:none;
@@ -486,28 +482,6 @@ body{
 
 .viewer-swipe:active{
   cursor:grabbing;
-}
-
-.viewer-swipe .chev{
-  display:inline-flex;
-  font-size:15px;
-  letter-spacing:-2px;
-  color:rgba(244,242,234,0.4);
-}
-
-.viewer-swipe .chev.left{ animation:chevBounceLeft 1.6s ease-in-out infinite; }
-.viewer-swipe .chev.right{ animation:chevBounceRight 1.6s ease-in-out infinite; }
-
-.viewer-swipe:active .chev{ animation-play-state:paused; }
-
-@keyframes chevBounceLeft{
-  0%,100%{ transform:translateX(0); opacity:0.45; }
-  50%{ transform:translateX(-6px); opacity:0.85; }
-}
-
-@keyframes chevBounceRight{
-  0%,100%{ transform:translateX(0); opacity:0.45; }
-  50%{ transform:translateX(6px); opacity:0.85; }
 }
 
 /* LOADER */
@@ -632,6 +606,56 @@ body::-webkit-scrollbar{
 
 @media(max-width:600px){
   .site-footer{ display:none; }
+}
+
+/* =========================
+   PAGINATION DOTS — outside the card, pinned to the bottom of the
+   viewport like a footer. Sits above the text footer on desktop; takes
+   over its spot on mobile, where the text footer is hidden.
+========================= */
+.carousel-dots{
+  position:fixed;
+  bottom:44px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:4;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  max-width:92vw;
+  padding:6px 4px;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+
+.carousel-dots::-webkit-scrollbar{
+  display:none;
+}
+
+.carousel-dots .dot{
+  flex:0 0 auto;
+  width:6px;
+  height:6px;
+  margin:0;
+  padding:0;
+  border:none;
+  border-radius:3px;
+  background:rgba(244,242,234,0.28);
+  cursor:pointer;
+  transition:all 0.25s ease;
+}
+
+.carousel-dots .dot:hover{
+  background:rgba(244,242,234,0.55);
+}
+
+.carousel-dots .dot.active{
+  width:18px;
+  background:var(--accent);
+}
+
+@media(max-width:600px){
+  .carousel-dots{ bottom:16px; }
 }
 
 /* =========================

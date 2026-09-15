@@ -83,10 +83,7 @@ products.forEach((p,i)=>{
       <div class="product-viewer">
         <div class="viewer-hint">Drag to rotate</div>
         <div class="loader">Loading...</div>
-        <div class="viewer-swipe" aria-hidden="true">
-          <span class="chev left">&#8249;&#8249;</span>
-          <span class="chev right">&#8250;&#8250;</span>
-        </div>
+        <div class="viewer-swipe" aria-hidden="true"></div>
       </div>
       <div class="product-actions">
         <button class="animate-button" type="button"><span class="play-ico">&#9654;</span> Animate</button>
@@ -105,6 +102,20 @@ const slides = document.querySelectorAll(".product-section");
 const prevArrow = document.querySelector(".arrow.prev");
 const nextArrow = document.querySelector(".arrow.next");
 let current=0, isDragging=false, startX=0, deltaX=0;
+
+/* PAGINATION DOTS — outside the card, pinned to the bottom like a footer.
+   One per product, click to jump straight to it; updateSlides() keeps
+   the active one in sync further down. */
+const dotsContainer = document.getElementById("carouselDots");
+const dots = products.map((p,i)=>{
+  const dot = document.createElement("button");
+  dot.type = "button";
+  dot.className = "dot";
+  dot.setAttribute("aria-label", p.name);
+  dot.addEventListener("click", ()=> goToSlide(i));
+  dotsContainer.appendChild(dot);
+  return dot;
+});
 
 /* =========================
    THREE.JS WEBGL — UN SOLO CONTEXTO COMPARTIDO
@@ -271,6 +282,7 @@ function updateSlides(){
   slides[(current-1+slides.length)%slides.length].classList.add("prev");
   slides[(current+1)%slides.length].classList.add("next");
   if(typeof showModelForSlide === "function") showModelForSlide(current);
+  dots.forEach((d,i)=> d.classList.toggle("active", i===current));
 }
 updateSlides();
 function goNext(){ current=(current+1)%slides.length; updateSlides();}
