@@ -81,7 +81,10 @@ products.forEach((p,i)=>{
         <p>${p.description}</p>
       </div>
       <div class="product-viewer">
-        <div class="viewer-hint">Drag to rotate</div>
+        <div class="viewer-hint">
+          <span class="only-desktop">Drag to rotate</span>
+          <span class="only-touch">Hold &amp; drag to rotate</span>
+        </div>
         <div class="loader">Loading...</div>
       </div>
       <div class="product-actions">
@@ -155,14 +158,78 @@ viewerControls.enableZoom=false;
 viewerControls.enablePan=false;
 viewerControls.enableDamping=true;
 viewerControls.rotateSpeed=0.8;
-// Explicit, since the default touch mapping only holds while nothing else
-// on the page has already claimed the gesture — pin single-finger touch
-// to rotate (matches the mouse drag) regardless.
-viewerControls.touches.ONE = THREE.TOUCH.ROTATE;
+// Mouse drag-to-rotate stays exactly as-is (OrbitControls handles it).
+// Touch is handled by a separate hold-to-arm rotator further down instead
+// (see TOUCH DRAG-TO-ROTATE) — disable OrbitControls' own single-touch
+// mapping so the two never fight over the same gesture.
+viewerControls.touches.ONE = -1;
 
 const modelCache = {};
 let activeModel = null;
 let viewerReady = false;
+
+/* =========================================================
+   TOUCH DRAG-TO-ROTATE — hold, then drag
+   ---------------------------------------------------------
+   An immediate touch-drag kept getting interrupted (something else on
+   the page claiming the gesture before OrbitControls could), so instead
+   of an instant drag, a finger has to hold still on the model for a
+   moment first. Once armed, dragging spins the model directly — mouse
+   drag on desktop is untouched (still OrbitControls, immediate).
+========================================================= */
+const TOUCH_HOLD_MS = 3000;
+const TOUCH_CANCEL_DIST = 14; // px of drift during the hold that cancels it
+
+let touchHoldTimer = null;
+let touchArmed = false;
+let touchStartPt = null;
+let touchLastPt = null;
+
+function resetTouchRotate(){
+  if(touchHoldTimer){ clearTimeout(touchHoldTimer); touchHoldTimer = null; }
+  touchArmed = false;
+  viewerCanvas.classList.remove("rotate-charging","rotate-armed");
+}
+
+function armTouchRotate(){
+  touchArmed = true;
+  viewerCanvas.classList.remove("rotate-charging");
+  viewerCanvas.classList.add("rotate-armed");
+}
+
+viewerCanvas.addEventListener("touchstart", e=>{
+  const touch = e.touches[0];
+  touchStartPt = { x:touch.clientX, y:touch.clientY };
+  touchLastPt = { x:touch.clientX, y:touch.clientY };
+  resetTouchRotate();
+  viewerCanvas.classList.add("rotate-charging");
+  touchHoldTimer = setTimeout(armTouchRotate, TOUCH_HOLD_MS);
+}, { passive:true });
+
+viewerCanvas.addEventListener("touchmove", e=>{
+  const touch = e.touches[0];
+
+  if(!touchArmed){
+    // Still holding still to arm it — enough drift means the finger
+    // wanted to do something else, so bail out instead of rotating.
+    const dist = Math.hypot(touch.clientX-touchStartPt.x, touch.clientY-touchStartPt.y);
+    if(dist > TOUCH_CANCEL_DIST) resetTouchRotate();
+    return;
+  }
+
+  e.preventDefault();
+  const dx = touch.clientX - touchLastPt.x;
+  const dy = touch.clientY - touchLastPt.y;
+  touchLastPt = { x:touch.clientX, y:touch.clientY };
+
+  if(activeModel){
+    activeModel.rotation.y += dx * 0.01;
+    activeModel.rotation.x = Math.max(-0.6, Math.min(0.6, activeModel.rotation.x + dy*0.01));
+  }
+}, { passive:false });
+
+viewerCanvas.addEventListener("touchend", resetTouchRotate);
+viewerCanvas.addEventListener("touchcancel", resetTouchRotate);
 
 function resizeViewerTo(canvas){
   const width = canvas.clientWidth || 1;
@@ -313,10 +380,10 @@ const MAX_ANGLE = 6; // menos exagerado
 const DRAG_LIMIT = 140; // 🔥 mucho más control
 
 carousel.addEventListener("mousedown",e=>{
-  // Swiping works over the whole card, EXCEPT the model itself — dragging
-  // the canvas is drag-to-rotate (OrbitControls owns it exclusively) and
+  // Swiping works over the whole card, EXCEPT the model's viewer box (the
+  // hint above it included) — dragging there is drag-to-rotate and
   // shouldn't also swipe the card underneath it.
-  if(e.target.closest(".webgl-canvas")) return;
+  if(e.target.closest(".product-viewer")) return;
   isDragging=true;
   startX=e.clientX;
   deltaX=0;
@@ -349,7 +416,7 @@ window.addEventListener("mouseup",()=>{
 
 /* TOUCH */
 carousel.addEventListener("touchstart", e=>{
-  if(e.target.closest(".webgl-canvas")) return;
+  if(e.target.closest(".product-viewer")) return;
   isDragging=true;
   startX=e.touches[0].clientX;
   deltaX=0;
