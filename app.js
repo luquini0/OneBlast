@@ -155,9 +155,21 @@ viewerControls.enableZoom=false;
 viewerControls.enablePan=false;
 viewerControls.enableDamping=true;
 viewerControls.rotateSpeed=0.8;
-// Single-finger touch rotates by default (touches.ONE = ROTATE), so the
-// same OrbitControls instance drives rotate-to-drag on mouse AND touch —
-// no separate gesture/state machine needed for either input.
+
+/* OrbitControls' own touch handling (legacy touchstart/move/end wired
+   internally, separate from its pointerdown path which only handles
+   mouse/pen) turned out unreliable in practice on real phones — the
+   viewer went dead to touch. Mouse keeps using OrbitControls as-is
+   (confirmed working); touch instead rotates the model directly (see
+   TOUCH: DRAG TO ROTATE, OR SWIPE below), so OrbitControls needs to
+   stay out of the way whenever a touch is in progress on the canvas.
+   Disabling in the CAPTURING phase on a shared ancestor guarantees this
+   runs before OrbitControls' own touchstart handler either way. */
+document.addEventListener("touchstart", e=>{
+  if(e.target.closest && e.target.closest(".product-viewer")) viewerControls.enabled = false;
+}, { capture:true, passive:true });
+document.addEventListener("touchend", ()=>{ viewerControls.enabled = true; }, { capture:true, passive:true });
+document.addEventListener("touchcancel", ()=>{ viewerControls.enabled = true; }, { capture:true, passive:true });
 
 const modelCache = {};
 let activeModel = null;
@@ -247,6 +259,7 @@ function showModelForSlide(i){
   if(model){
     viewerScene.add(model);
     activeModel = model;
+    activeModel.rotation.set(0,0,0); // fresh view every time, not however touch left it last visit
     if(loaderEl) loaderEl.style.display = "none";
   } else {
     activeModel = null;
@@ -347,36 +360,62 @@ window.addEventListener("mouseup",()=>{
 });
 
 /* =========================================================
-   TOUCH: SWIPE TO NAVIGATE
+   TOUCH: DRAG TO ROTATE, OR SWIPE
    ---------------------------------------------------------
-   Same split as mouse: starting over the viewer (model + its hint) is
-   drag-to-rotate, handled entirely by OrbitControls on the canvas itself
-   (see viewerControls above) — this handler ignores that gesture
-   completely instead of racing it. Starting anywhere else on the card is
-   a swipe, exactly like the mousedown/mousemove/mouseup flow below.
+   Same split as mouse: starting over the viewer (model + its hint)
+   rotates, starting anywhere else on the card swipes — instantly, no
+   hold delay either way. Rotate is done by hand here (not OrbitControls;
+   see the note above viewerControls) by turning the model itself, which
+   is why showModelForSlide() resets activeModel.rotation on every slide
+   change — otherwise a model would come back however touch last left it.
 ========================================================= */
+let rotateOverViewer = false;
+let rotateLastPt = null;
+
 carousel.addEventListener("touchstart", e=>{
-  if(e.target.closest(".product-viewer")) return; // rotate: OrbitControls owns this gesture
   const touch = e.touches[0];
+
+  rotateOverViewer = !!e.target.closest(".product-viewer");
+  if(rotateOverViewer){
+    rotateLastPt = { x:touch.clientX, y:touch.clientY };
+    isDragging = false;
+    return;
+  }
+
   isDragging=true;
   startX=touch.clientX;
   deltaX=0;
 }, { passive:true });
 
 carousel.addEventListener("touchmove", e=>{
+  const touch = e.touches[0];
+
+  if(rotateOverViewer){
+    e.preventDefault();
+    const dx = touch.clientX - rotateLastPt.x;
+    const dy = touch.clientY - rotateLastPt.y;
+    rotateLastPt = { x:touch.clientX, y:touch.clientY };
+    if(activeModel){
+      activeModel.rotation.y += dx * 0.01;
+      activeModel.rotation.x = Math.max(-0.6, Math.min(0.6, activeModel.rotation.x + dy*0.01));
+    }
+    return;
+  }
+
   if(!isDragging) return;
 
-  const touch = e.touches[0];
   deltaX=touch.clientX-startX;
 
   const clamped = Math.max(-DRAG_LIMIT, Math.min(DRAG_LIMIT, deltaX));
   const angle = (clamped / DRAG_LIMIT) * MAX_ANGLE;
 
   slides[current].style.transform = `translate(-50%,-50%) rotateY(${angle}deg)`;
-}, { passive:true });
+}, { passive:false });
 
 carousel.addEventListener("touchend", ()=>{
-  if(!isDragging) return;
+  rotateOverViewer = false;
+
+  if(!isDragging) return; // was rotating — nothing to swipe-finalize
   isDragging=false;
 
   if(deltaX > DRAG_LIMIT/2) goPrev();
